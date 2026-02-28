@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Karlstadt 2026 Live</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Neutral, high-contrast theme */
+        body {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .touch-target {
+            min-height: 44px;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+    </style>
+</head>
+
+<body class="antialiased" x-data="electionDashboard()">
+
+    <!-- Sticky Header & Filter Bar -->
+    <header class="sticky-header bg-white shadow-md p-4">
+        <h1 class="text-xl font-bold text-center mb-3 text-gray-800">Kommunalwahl Karlstadt</h1>
+
+        <div class="mb-3">
+            <input type="text" x-model="searchQuery" placeholder="🔎 Kandidat suchen..."
+                class="w-full border-2 border-gray-300 rounded-lg p-3 touch-target text-lg focus:outline-none focus:border-blue-500 transition">
+        </div>
+
+        <!-- Party Filter Toggle Buttons -->
+        <div class="flex overflow-x-auto gap-2 pb-2 hide-scrollbar">
+            <button @click="toggleParty('ALL')"
+                class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition whitespace-nowrap"
+                :class="selectedParty === 'ALL' ? 'bg-gray-800 text-white border-gray-800' : 'bg-gray-100 text-gray-700 border-gray-300'">
+                Alle
+            </button>
+            <template x-for="party in parties" :key="party.id">
+                <button @click="toggleParty(party.id)"
+                    class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition whitespace-nowrap"
+                    :class="selectedParty === party.id ? 'text-white' : 'bg-gray-100 text-gray-700 border-gray-300'"
+                    :style="selectedParty === party.id ? `background-color: ${party.color}; border-color: ${party.color};` : ''"
+                    x-text="party.name"></button>
+            </template>
+        </div>
+    </header>
+
+    <main class="p-4">
+
+        <!-- Party Strength Chart -->
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <h2 class="text-lg font-bold mb-2 text-gray-700">Parteistimmen (%)</h2>
+            <div class="w-full relative" style="height: 180px;">
+                <canvas id="partyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Candidates List -->
+        <div>
+            <h2 class="text-lg font-bold mb-4 text-gray-700">
+                Kandidaten <span class="text-sm font-normal text-gray-500"
+                    x-text="`(${filteredCandidates.length})`"></span>
+            </h2>
+
+            <div class="space-y-3">
+                <template x-for="candidate in filteredCandidates" :key="candidate.partyId + '-' + candidate.id">
+                    <div class="bg-white rounded-lg p-4 shadow-sm flex justify-between items-center border-l-4"
+                        :style="`border-color: ${candidate.partyColor}`">
+                        <div>
+                            <div class="font-bold text-gray-900 text-lg" x-text="candidate.name"></div>
+                            <div class="text-sm font-semibold text-gray-500" x-text="candidate.partyName"></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-black text-gray-800"
+                                x-text="candidate.votes.toLocaleString('de-DE')"></div>
+                            <div class="text-xs text-gray-400">Stimmen</div>
+                        </div>
+                    </div>
+                </template>
+
+                <div x-show="filteredCandidates.length === 0" class="text-center py-8 text-gray-500">
+                    Keine Kandidaten gefunden.
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function electionDashboard() {
+            return {
+                parties: [],
+                allCandidates: [],
+                searchQuery: '',
+                selectedParty: 'ALL',
+                chartInstance: null,
+
+                async init() {
+                    await this.fetchData();
+                    // Poll every 10 seconds
+                    setInterval(() => this.fetchData(), 10000);
+                },
+
+                async fetchData() {
+                    try {
+                        const response = await fetch('live_data.json?t=' + new Date().getTime());
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        const data = await response.json();
+
+                        this.parties = data;
+
+                        // Flatten candidates for the list view
+                        let tempCandidates = [];
+                        this.parties.forEach(party => {
+                            party.candidates.forEach(candidate => {
+                                tempCandidates.push({
+                                    ...candidate,
+                                    partyId: party.id,
+                                    partyName: party.name,
+                                    partyColor: party.color
+                                });
+                            });
+                        });
+
+                        // Sort by votes descending
+                        this.allCandidates = tempCandidates.sort((a, b) => b.votes - a.votes);
+
+                        this.updateChart();
+                    } catch (error) {
+                        console.error("Error fetching data:", error);
+                    }
+                },
+
+                toggleParty(partyId) {
+                    this.selectedParty = partyId;
+                },
+
+                get filteredCandidates() {
+                    let filtered = this.allCandidates;
+
+                    // Filter by party
+                    if (this.selectedParty !== 'ALL') {
+                        filtered = filtered.filter(c => c.partyId === this.selectedParty);
+                    }
+
+                    // Filter by search query (fuzzy match name)
+                    if (this.searchQuery.trim() !== '') {
+                        const query = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(c => c.name.toLowerCase().includes(query));
+                    }
+
+                    return filtered;
+                },
+
+                updateChart() {
+                    const ctx = document.getElementById('partyChart');
+                    if (!ctx) return;
+
+                    // Exclude parties with 0 candidates and 0 votes just in case
+                    const activeParties = this.parties.filter(p => p.totalVotesPercent > 0 || p.candidates.length > 0);
+
+                    const labels = activeParties.map(p => p.name);
+                    const data = activeParties.map(p => p.totalVotesPercent);
+                    const colors = activeParties.map(p => p.color);
+
+                    if (this.chartInstance) {
+                        this.chartInstance.data.labels = labels;
+                        this.chartInstance.data.datasets[0].data = data;
+                        this.chartInstance.data.datasets[0].backgroundColor = colors;
+                        this.chartInstance.update();
+                    } else {
+                        this.chartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Stimmen (%)',
+                                    data: data,
+                                    backgroundColor: colors,
+                                    borderRadius: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                indexAxis: 'x',
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            callback: function (value) {
+                                                return value + '%';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

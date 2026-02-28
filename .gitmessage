@@ -1,0 +1,20 @@
+Initial prototype for Karlstadt 2026 Election Dashboard
+
+This commit introduces a functional prototype for the Karlstadt 2026
+local election dashboard, currently utilizing historical 2020 election
+data from AKDB/Votemanager for testing and layout purposes.
+
+Core functionalities implemented:
+- Python Backend (`fetcher.py`): Scrapes official AKDB HTML results,
+  parsing both aggregate party strength charts and complex candidate
+  tables to construct a clean `live_data.json`.
+- Frontend UI (`index.html`): Responsive, mobile-first design using
+  Tailwind CSS and Alpine.js. Features fuzzy search, party toggles,
+  and Chart.js integration for visual data representation.
+- Environment & Formatting: Added `requirements.txt`, rigidly linted
+  code using `black` and `flake8`, and defined agent instructions in
+  `CONTRIBUTING.md`.
+- Documentation: Created `README.md` with detailed local Wi-Fi hosting
+  instructions, and `Observations.md` outlining the critical correlation
+  between HTML results and downloadable CSVs for future fallback plans.
+- Licensing: Attached official MIT License template from choosealicense.
