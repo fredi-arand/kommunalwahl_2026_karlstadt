@@ -596,43 +596,5 @@
         "votes": 171
       }
     ]
-  },
-  {
-    "id": "Unknown",
-    "name": "Unknown",
-    "color": "#CCCCCC",
-    "totalVotesPercent": 0.0,
-    "candidates": [
-      {
-        "id": 1,
-        "name": "CSU",
-        "votes": 61299
-      },
-      {
-        "id": 2,
-        "name": "GRÜNE",
-        "votes": 38907
-      },
-      {
-        "id": 3,
-        "name": "SPD",
-        "votes": 31600
-      },
-      {
-        "id": 4,
-        "name": "FDP",
-        "votes": 1445
-      },
-      {
-        "id": 5,
-        "name": "FWG",
-        "votes": 39767
-      },
-      {
-        "id": 6,
-        "name": "DIE LINKE / Die PARTEI",
-        "votes": 6234
-      }
-    ]
   }
 ]

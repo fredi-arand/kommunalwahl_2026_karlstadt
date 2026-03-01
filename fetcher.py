@@ -1,12 +1,14 @@
 import urllib.request
 from bs4 import BeautifulSoup
 import json
-import time
+import sys
 
 # fmt: off
 ELECTION_URL = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+MAYOR_URL = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
 # fmt: on
-OUTPUT_FILE = "live_data.json"
+OUTPUT_FILE = "candidates_2020.json"
+MAYOR_OUTPUT = "mayor_2020.json"
 
 
 def fetch_data():
@@ -75,6 +77,13 @@ def fetch_data():
                             cand_name = name_and_party
                             party_short = "Unknown"
 
+                        # If the "candidate name" equals a known party name, this row
+                        # likely represents an aggregated party total (not a person).
+                        # Skip such rows to avoid creating an 'Unknown' party with
+                        # names like 'CSU', 'SPD' as candidates.
+                        if cand_name.strip() in parties:
+                            continue
+
                         # Find votes (usually in a td with class 'text-right' and nobr)
                         # Let's iterate over cols to find the one with a plain number.
                         votes_str = "0"
@@ -93,10 +102,26 @@ def fetch_data():
                         # Note: The party abbreviation in the chart might not match exactly.
                         # Try to match or create a new one.
                         matched_party_key = None
+                        # Try exact or case-insensitive match first
                         for p_key in parties.keys():
-                            if p_key in party_short or party_short in p_key:
+                            if (
+                                p_key.lower() == party_short.lower()
+                                or party_short.lower() == p_key.lower()
+                            ):
                                 matched_party_key = p_key
                                 break
+                        # Fallback: substring match
+                        if not matched_party_key:
+                            for p_key in parties.keys():
+                                try:
+                                    if (
+                                        p_key.lower().find(party_short.lower()) != -1
+                                        or party_short.lower().find(p_key.lower()) != -1
+                                    ):
+                                        matched_party_key = p_key
+                                        break
+                                except Exception:
+                                    continue
 
                         if not matched_party_key:
                             matched_party_key = party_short
@@ -126,14 +151,96 @@ def fetch_data():
                                 }
                             )
 
-        # Save to file
+        # Save council candidates to file
         final_data = list(parties.values())
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             json.dump(final_data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
 
-        print(
-            f"Successfully saved {len(final_data)} parties with candidate data to {OUTPUT_FILE}"
-        )
+        print(f"Saved {len(final_data)} parties with candidate data to {OUTPUT_FILE}")
+
+        # 3. Fetch mayor page and extract mayor candidates (separate vote)
+        try:
+            mreq = urllib.request.Request(
+                MAYOR_URL, headers={"User-Agent": "Mozilla/5.0"}
+            )
+            with urllib.request.urlopen(mreq) as mresp:
+                mhtml = mresp.read().decode("utf-8")
+
+            msoup = BeautifulSoup(mhtml, "html.parser")
+            mayor_candidates = []
+
+            # Similar parsing: look for rows with <abbr> and vote counts
+            tables = msoup.find_all("table")
+            for table in tables:
+                rows = table.find_all("tr")
+                for row in rows:
+                    abbr = row.find("abbr")
+                    if not abbr:
+                        continue
+
+                    name_and_party = abbr.get_text(strip=True)
+                    if ", " in name_and_party:
+                        cand_name, party_short = name_and_party.rsplit(", ", 1)
+                    else:
+                        cand_name = name_and_party
+                        party_short = None
+
+                    # Skip aggregated rows where name equals party
+                    if party_short and cand_name.strip() == party_short.strip():
+                        continue
+
+                    # find votes
+                    votes = 0
+                    nobr = row.find("nobr")
+                    if nobr and nobr.get_text(strip=True):
+                        val = nobr.get_text(strip=True)
+                        votes = (
+                            int(val.replace(".", ""))
+                            if any(c.isdigit() for c in val)
+                            else 0
+                        )
+                    else:
+                        cols = row.find_all(["td", "th"])
+                        for col in reversed(cols):
+                            txt = col.get_text(" ", strip=True)
+                            if any(c.isdigit() for c in txt):
+                                cleaned = "".join(ch for ch in txt if ch.isdigit())
+                                votes = int(cleaned) if cleaned else 0
+                                break
+
+                    mayor_candidates.append(
+                        {
+                            "name": cand_name.strip(),
+                            "party": party_short.strip() if party_short else None,
+                            "votes": votes,
+                        }
+                    )
+
+            # dedupe and sort
+            seen = {}
+            for c in mayor_candidates:
+                key = (c["name"], c["party"])
+                if key in seen:
+                    if c["votes"] > seen[key]["votes"]:
+                        seen[key] = c
+                else:
+                    seen[key] = c
+
+            mayor_list = list(seen.values())
+            mayor_list.sort(key=lambda x: x["votes"], reverse=True)
+            # assign ids
+            for idx, r in enumerate(mayor_list, start=1):
+                r["id"] = idx
+
+            with open(MAYOR_OUTPUT, "w", encoding="utf-8") as f:
+                json.dump(mayor_list, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+
+            print(f"Saved {len(mayor_list)} mayor candidates to {MAYOR_OUTPUT}")
+        except Exception as me:
+            print(f"Error fetching/parsing mayor page: {me}")
+
         return True
 
     except Exception as e:
@@ -142,8 +249,7 @@ def fetch_data():
 
 
 if __name__ == "__main__":
-    print("Starting election data fetcher...")
-    while True:
-        fetch_data()
-        print("Waiting 60 seconds before next poll...")
-        time.sleep(60)
+    print("Running fetcher once...")
+    ok = fetch_data()
+    if not ok:
+        sys.exit(1)
