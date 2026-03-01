@@ -2,7 +2,6 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-live_data.json
 dump.html
 .DS_Store
 .vscode/

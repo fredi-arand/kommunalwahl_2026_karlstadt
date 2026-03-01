@@ -1,0 +1,638 @@
+[
+  {
+    "id": "CSU",
+    "name": "CSU",
+    "color": "#000000",
+    "totalVotesPercent": 34.2,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "Michael Hombach",
+        "votes": 7698
+      },
+      {
+        "id": 2,
+        "name": "Thomas Schlott",
+        "votes": 1313
+      },
+      {
+        "id": 3,
+        "name": "Theo Dittmaier",
+        "votes": 5261
+      },
+      {
+        "id": 4,
+        "name": "Isabel Frohnapfel",
+        "votes": 3381
+      },
+      {
+        "id": 5,
+        "name": "Björn Reinhard",
+        "votes": 2218
+      },
+      {
+        "id": 6,
+        "name": "Bernadette Schrama",
+        "votes": 1582
+      },
+      {
+        "id": 7,
+        "name": "Gerhard Winheim",
+        "votes": 2560
+      },
+      {
+        "id": 8,
+        "name": "Florian Burkard",
+        "votes": 4040
+      },
+      {
+        "id": 9,
+        "name": "Uwe Mehling",
+        "votes": 3218
+      },
+      {
+        "id": 10,
+        "name": "Mathias Rudolph",
+        "votes": 3116
+      },
+      {
+        "id": 11,
+        "name": "Martin Kraft",
+        "votes": 2535
+      },
+      {
+        "id": 12,
+        "name": "Thomas Riedmann",
+        "votes": 2057
+      },
+      {
+        "id": 13,
+        "name": "Jutta Ringelmann",
+        "votes": 1742
+      },
+      {
+        "id": 14,
+        "name": "Armin Marschall",
+        "votes": 1957
+      },
+      {
+        "id": 15,
+        "name": "Cüneyt Ünaydin",
+        "votes": 914
+      },
+      {
+        "id": 16,
+        "name": "Tobias Becker",
+        "votes": 1140
+      },
+      {
+        "id": 17,
+        "name": "Sven Hilpert",
+        "votes": 855
+      },
+      {
+        "id": 18,
+        "name": "Stefan Höfling",
+        "votes": 2639
+      },
+      {
+        "id": 19,
+        "name": "Niki Hofbauer",
+        "votes": 1369
+      },
+      {
+        "id": 20,
+        "name": "Michael Müller",
+        "votes": 933
+      },
+      {
+        "id": 21,
+        "name": "Gerd Reichert",
+        "votes": 1926
+      },
+      {
+        "id": 22,
+        "name": "Rainer Schäfer",
+        "votes": 2678
+      },
+      {
+        "id": 23,
+        "name": "Eugen Köhler",
+        "votes": 2747
+      },
+      {
+        "id": 24,
+        "name": "Manfred Goldkuhle",
+        "votes": 3420
+      }
+    ]
+  },
+  {
+    "id": "GRÜNE",
+    "name": "GRÜNE",
+    "color": "#228b22",
+    "totalVotesPercent": 21.71,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "Armin Beck",
+        "votes": 4572
+      },
+      {
+        "id": 2,
+        "name": "Anja Baier",
+        "votes": 5916
+      },
+      {
+        "id": 3,
+        "name": "Horst Wittstadt",
+        "votes": 3203
+      },
+      {
+        "id": 4,
+        "name": "Elena Reinhard",
+        "votes": 1131
+      },
+      {
+        "id": 5,
+        "name": "Jochen Haase",
+        "votes": 1179
+      },
+      {
+        "id": 6,
+        "name": "Katharina Vautrin-Hofmann",
+        "votes": 1772
+      },
+      {
+        "id": 7,
+        "name": "Reinhard Rauch",
+        "votes": 1224
+      },
+      {
+        "id": 8,
+        "name": "Sandra Haedge",
+        "votes": 633
+      },
+      {
+        "id": 9,
+        "name": "Timo Scheblein",
+        "votes": 858
+      },
+      {
+        "id": 10,
+        "name": "Andrea Naujoks",
+        "votes": 1904
+      },
+      {
+        "id": 11,
+        "name": "Martin Sailer",
+        "votes": 1225
+      },
+      {
+        "id": 12,
+        "name": "Carmen Münch",
+        "votes": 701
+      },
+      {
+        "id": 13,
+        "name": "Erwin Scheiner",
+        "votes": 1314
+      },
+      {
+        "id": 14,
+        "name": "Lucia Bühler-Scholz",
+        "votes": 714
+      },
+      {
+        "id": 15,
+        "name": "Peter Kretzinger",
+        "votes": 1437
+      },
+      {
+        "id": 16,
+        "name": "Maria Hussong",
+        "votes": 653
+      },
+      {
+        "id": 17,
+        "name": "Christian Baier",
+        "votes": 2956
+      },
+      {
+        "id": 18,
+        "name": "Pauline Kuhn",
+        "votes": 948
+      },
+      {
+        "id": 19,
+        "name": "Magdalena Eder",
+        "votes": 794
+      },
+      {
+        "id": 20,
+        "name": "Wolfgang Tröster",
+        "votes": 1954
+      },
+      {
+        "id": 21,
+        "name": "Susanne von Mansberg",
+        "votes": 740
+      },
+      {
+        "id": 22,
+        "name": "Walter Gleichmann",
+        "votes": 667
+      },
+      {
+        "id": 23,
+        "name": "Ursula Frey",
+        "votes": 772
+      },
+      {
+        "id": 24,
+        "name": "Gerhard Kraft",
+        "votes": 1640
+      }
+    ]
+  },
+  {
+    "id": "SPD",
+    "name": "SPD",
+    "color": "#d60029",
+    "totalVotesPercent": 17.63,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "Stefan Rümmer",
+        "votes": 6139
+      },
+      {
+        "id": 2,
+        "name": "Martha Bolkart-Mühlrath",
+        "votes": 2551
+      },
+      {
+        "id": 3,
+        "name": "Marco Netrval",
+        "votes": 2055
+      },
+      {
+        "id": 4,
+        "name": "Anja Hartung",
+        "votes": 1205
+      },
+      {
+        "id": 5,
+        "name": "Dr. Frederick Arand",
+        "votes": 1154
+      },
+      {
+        "id": 6,
+        "name": "Marion Rumpel",
+        "votes": 1657
+      },
+      {
+        "id": 7,
+        "name": "Harald Schneider",
+        "votes": 2366
+      },
+      {
+        "id": 8,
+        "name": "Sandra Hasseli",
+        "votes": 1092
+      },
+      {
+        "id": 9,
+        "name": "Leon Stahl",
+        "votes": 1570
+      },
+      {
+        "id": 10,
+        "name": "Karoline Wingenfeld",
+        "votes": 1624
+      },
+      {
+        "id": 11,
+        "name": "Marc Boreatti",
+        "votes": 690
+      },
+      {
+        "id": 12,
+        "name": "Stephan Keller",
+        "votes": 1621
+      },
+      {
+        "id": 13,
+        "name": "Reiner Heßdörfer",
+        "votes": 1819
+      },
+      {
+        "id": 14,
+        "name": "Heinrich Schoppmann",
+        "votes": 506
+      },
+      {
+        "id": 15,
+        "name": "Josef Duchnik",
+        "votes": 893
+      },
+      {
+        "id": 16,
+        "name": "Margarete Braun",
+        "votes": 1054
+      },
+      {
+        "id": 17,
+        "name": "Heike Kohlmann",
+        "votes": 863
+      },
+      {
+        "id": 18,
+        "name": "Eva-Maria Eisele",
+        "votes": 792
+      },
+      {
+        "id": 19,
+        "name": "Alfons Mühlrath",
+        "votes": 970
+      },
+      {
+        "id": 20,
+        "name": "Heidi Wright",
+        "votes": 979
+      }
+    ]
+  },
+  {
+    "id": "FWG",
+    "name": "FWG",
+    "color": "#ee7621",
+    "totalVotesPercent": 22.18,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "Dr. Benedikt Kaufmann",
+        "votes": 4737
+      },
+      {
+        "id": 2,
+        "name": "Sebastian Kunz",
+        "votes": 3721
+      },
+      {
+        "id": 3,
+        "name": "Gunter Müller",
+        "votes": 2747
+      },
+      {
+        "id": 4,
+        "name": "Ingo Röder",
+        "votes": 3076
+      },
+      {
+        "id": 5,
+        "name": "Sabine Wicha",
+        "votes": 1204
+      },
+      {
+        "id": 6,
+        "name": "Daniel Scheinhof",
+        "votes": 1522
+      },
+      {
+        "id": 7,
+        "name": "Edgar Ehrenfels",
+        "votes": 2029
+      },
+      {
+        "id": 8,
+        "name": "Thorsten Heßdörfer",
+        "votes": 3089
+      },
+      {
+        "id": 9,
+        "name": "Andrea Roos",
+        "votes": 1480
+      },
+      {
+        "id": 10,
+        "name": "Matthias Seubert",
+        "votes": 1305
+      },
+      {
+        "id": 11,
+        "name": "Stefan Thesen",
+        "votes": 825
+      },
+      {
+        "id": 12,
+        "name": "Martin Rauch",
+        "votes": 1761
+      },
+      {
+        "id": 13,
+        "name": "Janina Renner",
+        "votes": 660
+      },
+      {
+        "id": 14,
+        "name": "Marco Mal",
+        "votes": 1218
+      },
+      {
+        "id": 15,
+        "name": "Johannes Schlicht",
+        "votes": 1198
+      },
+      {
+        "id": 16,
+        "name": "Arzu Gümüshan",
+        "votes": 553
+      },
+      {
+        "id": 17,
+        "name": "Florian Döll",
+        "votes": 1523
+      },
+      {
+        "id": 18,
+        "name": "Patricia Konrad",
+        "votes": 798
+      },
+      {
+        "id": 19,
+        "name": "Adem Erek",
+        "votes": 682
+      },
+      {
+        "id": 20,
+        "name": "Benedikt Größler",
+        "votes": 1499
+      },
+      {
+        "id": 21,
+        "name": "Martin Scheiner",
+        "votes": 1399
+      },
+      {
+        "id": 22,
+        "name": "Taylan Zorlu",
+        "votes": 385
+      },
+      {
+        "id": 23,
+        "name": "Tino Taupp",
+        "votes": 899
+      },
+      {
+        "id": 24,
+        "name": "Wolfgang Krug",
+        "votes": 1457
+      }
+    ]
+  },
+  {
+    "id": "FDP",
+    "name": "FDP",
+    "color": "#fbee31",
+    "totalVotesPercent": 0.81,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "Paul Merklein",
+        "votes": 628
+      },
+      {
+        "id": 2,
+        "name": "Alexander Goldberg",
+        "votes": 269
+      },
+      {
+        "id": 3,
+        "name": "Tomas Maksielyas",
+        "votes": 200
+      },
+      {
+        "id": 4,
+        "name": "Amelie Goldberg",
+        "votes": 348
+      }
+    ]
+  },
+  {
+    "id": "DIE LINKE / Die PARTEI",
+    "name": "DIE LINKE / Die PARTEI",
+    "color": "#8b0000",
+    "totalVotesPercent": 3.48,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "Janik Havla",
+        "votes": 1167
+      },
+      {
+        "id": 2,
+        "name": "Bernd Kleinwechter",
+        "votes": 353
+      },
+      {
+        "id": 3,
+        "name": "Jakob Schreiner",
+        "votes": 506
+      },
+      {
+        "id": 4,
+        "name": "Rudi Gosdschan",
+        "votes": 873
+      },
+      {
+        "id": 5,
+        "name": "Benedikt Scheiner",
+        "votes": 542
+      },
+      {
+        "id": 6,
+        "name": "Martin Möllmann",
+        "votes": 230
+      },
+      {
+        "id": 7,
+        "name": "Johannes Köhler",
+        "votes": 276
+      },
+      {
+        "id": 8,
+        "name": "Christian Müller",
+        "votes": 558
+      },
+      {
+        "id": 9,
+        "name": "Nina Zuleger",
+        "votes": 473
+      },
+      {
+        "id": 10,
+        "name": "David Lutz",
+        "votes": 308
+      },
+      {
+        "id": 11,
+        "name": "Johannes Höhn",
+        "votes": 255
+      },
+      {
+        "id": 12,
+        "name": "Emanuel Schirm",
+        "votes": 223
+      },
+      {
+        "id": 13,
+        "name": "Christina Vogt",
+        "votes": 299
+      },
+      {
+        "id": 14,
+        "name": "Julian Lutz",
+        "votes": 171
+      }
+    ]
+  },
+  {
+    "id": "Unknown",
+    "name": "Unknown",
+    "color": "#CCCCCC",
+    "totalVotesPercent": 0.0,
+    "candidates": [
+      {
+        "id": 1,
+        "name": "CSU",
+        "votes": 61299
+      },
+      {
+        "id": 2,
+        "name": "GRÜNE",
+        "votes": 38907
+      },
+      {
+        "id": 3,
+        "name": "SPD",
+        "votes": 31600
+      },
+      {
+        "id": 4,
+        "name": "FDP",
+        "votes": 1445
+      },
+      {
+        "id": 5,
+        "name": "FWG",
+        "votes": 39767
+      },
+      {
+        "id": 6,
+        "name": "DIE LINKE / Die PARTEI",
+        "votes": 6234
+      }
+    ]
+  }
+]
