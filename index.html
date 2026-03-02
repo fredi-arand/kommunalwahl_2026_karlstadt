@@ -37,76 +37,34 @@
     <header class="sticky-header bg-white shadow-md p-4">
         <h1 class="text-xl font-bold text-center mb-3 text-gray-800">Kommunalwahl Karlstadt</h1>
 
-        <div class="mb-3 relative">
-            <div class="flex items-start gap-2">
-                <input type="text" x-model="searchQuery" @keydown.enter.prevent="addSearchCandidateFilter()"
-                    placeholder="🔎 Kandidat suchen..."
-                    class="flex-1 border-2 border-gray-300 rounded-lg p-3 touch-target text-lg focus:outline-none focus:border-blue-500 transition">
-                <button @click="addSearchCandidateFilter()" title="Als Filter hinzufügen"
-                    class="ml-2 px-4 py-2 bg-blue-600 text-white rounded-lg touch-target">+</button>
-            </div>
-
-            <!-- Search suggestions -->
-            <div x-show="searchQuery.trim() !== ''"
-                class="mt-2 bg-white border rounded-lg shadow-sm max-h-64 overflow-auto">
-                <template x-for="m in searchMatches" :key="m.partyId + '-' + m.id">
-                    <div class="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
-                        <div>
-                            <div class="font-medium" x-text="m.name"></div>
-                            <div class="text-xs text-gray-500" x-text="m.partyName"></div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button @click="addCandidateFilter(m)"
-                                class="px-3 py-1 bg-green-600 text-white rounded">+</button>
-                        </div>
-                    </div>
-                </template>
-                <div x-show="searchMatches.length === 0" class="p-3 text-sm text-gray-500">Keine Treffer</div>
-            </div>
+        <!-- View mode toggles -->
+        <div class="flex gap-2 mb-2">
+            <button @click="viewMode='candidates'"
+                :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
+                class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
+            <button @click="viewMode='mayor'"
+                :class="viewMode==='mayor'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
+                class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Bürgermeister</button>
         </div>
 
-        <!-- Selected candidate filter tags + reset -->
-        <div class="mb-3 flex items-center gap-2 flex-wrap">
-            <template x-for="c in candidateFilters" :key="c.partyId + '-' + c.id">
-                <div class="px-3 py-1 rounded-full bg-gray-100 flex items-center gap-2 border">
-                    <span class="font-medium" x-text="c.name"></span>
-                    <button @click="removeCandidateFilter(c)" class="text-gray-500">✕</button>
-                </div>
+        <!-- Party Filter Toggle Buttons -->
+        <div x-show="viewMode==='candidates'" class="flex flex-wrap gap-2 mt-2">
+            <template x-for="party in parties" :key="party.id">
+                <button @click="toggleParty(party.id)"
+                    class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition whitespace-nowrap"
+                    :class="selectedParties.includes(party.id) ? 'text-white' : 'bg-gray-100 text-gray-700 border-gray-300'"
+                    :style="selectedParties.includes(party.id) ? `background-color: ${party.color}; border-color: ${party.color};` : ''"
+                    x-text="party.name"></button>
             </template>
-            <button @click="resetFilters()" class="ml-auto px-3 py-1 rounded-lg bg-gray-200 text-sm">Filter
+            <button @click="resetFilters()" class="ml-auto px-3 py-1 rounded-lg bg-gray-200 text-sm self-center">Filter
                 zurücksetzen</button>
-        </div>
-
-        <!-- View mode toggles and Party Filter Toggle Buttons -->
-        <div class="flex items-center justify-between mb-2">
-            <div class="flex gap-2">
-                <button @click="viewMode='candidates'"
-                    :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
-                    class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
-                <button @click="viewMode='parties'"
-                    :class="viewMode==='parties'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
-                    class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Parteien</button>
-                <button @click="viewMode='mayor'"
-                    :class="viewMode==='mayor'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
-                    class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Bürgermeister</button>
-            </div>
-
-            <div x-show="viewMode==='candidates'" class="flex overflow-x-auto gap-2 pb-2 hide-scrollbar">
-                <template x-for="party in parties" :key="party.id">
-                    <button @click="toggleParty(party.id)"
-                        class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition whitespace-nowrap"
-                        :class="selectedParties.includes(party.id) ? 'text-white' : 'bg-gray-100 text-gray-700 border-gray-300'"
-                        :style="selectedParties.includes(party.id) ? `background-color: ${party.color}; border-color: ${party.color};` : ''"
-                        x-text="party.name"></button>
-                </template>
-            </div>
         </div>
     </header>
 
     <main class="p-4">
 
         <!-- Party Strength Chart -->
-        <div x-show="viewMode==='parties'" class="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div x-show="viewMode==='candidates'" class="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 class="text-lg font-bold mb-2 text-gray-700">Parteistimmen (%)</h2>
             <div class="w-full relative" style="height: 180px;">
                 <canvas id="partyChart"></canvas>
@@ -173,9 +131,7 @@
                 parties: [],
                 allCandidates: [],
                 mayorCandidates2020: [],
-                searchQuery: '',
                 selectedParties: [],
-                candidateFilters: [],
                 viewMode: 'candidates',
                 chartInstance: null,
 
@@ -238,36 +194,9 @@
 
                 resetFilters() {
                     this.selectedParties = [];
-                    this.candidateFilters = [];
-                    this.searchQuery = '';
-                },
-
-                addSearchCandidateFilter() {
-                    const q = this.searchQuery.trim().toLowerCase();
-                    if (!q) return;
-                    const match = this.searchMatches[0];
-                    if (match) {
-                        this.addCandidateFilter(match);
-                        this.searchQuery = '';
-                    }
-                },
-
-                addCandidateFilter(c) {
-                    if (!c) return;
-                    const exists = this.candidateFilters.some(f => f.id === c.id && f.partyId === c.partyId);
-                    if (!exists) this.candidateFilters.push(c);
-                },
-
-                removeCandidateFilter(c) {
-                    this.candidateFilters = this.candidateFilters.filter(f => !(f.id === c.id && f.partyId === c.partyId));
                 },
 
                 get filteredCandidates() {
-                    // If specific candidates are selected as filters, show only them (for comparison)
-                    if (this.candidateFilters.length > 0) {
-                        return this.candidateFilters.slice().sort((a, b) => b.votes - a.votes);
-                    }
-
                     let filtered = this.allCandidates;
 
                     // Filter by selected parties (if any) - only when in Kandidaten view
@@ -275,19 +204,7 @@
                         filtered = filtered.filter(c => this.selectedParties.includes(c.partyId));
                     }
 
-                    // Filter by search query (fuzzy match name)
-                    if (this.searchQuery.trim() !== '') {
-                        const query = this.searchQuery.toLowerCase();
-                        filtered = filtered.filter(c => c.name.toLowerCase().includes(query));
-                    }
-
                     return filtered;
-                },
-
-                get searchMatches() {
-                    const q = this.searchQuery.trim().toLowerCase();
-                    if (!q) return [];
-                    return this.allCandidates.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
                 },
 
                 get topCandidatesPerParty() {

@@ -1,30 +1,30 @@
 [
   {
-    "name": "Hombach",
+    "name": "Michael Hombach",
     "party": "CSU",
     "votes": 3124,
     "id": 1
   },
   {
-    "name": "Rümmer",
+    "name": "Stefan Rümmer",
     "party": "SPD",
     "votes": 1820,
     "id": 2
   },
   {
-    "name": "Dr. Kaufmann",
+    "name": "Dr. Benedikt Kaufmann",
     "party": "FWG",
     "votes": 1716,
     "id": 3
   },
   {
-    "name": "Beck",
+    "name": "Armin Beck",
     "party": "GRÜNE",
     "votes": 1552,
     "id": 4
   },
   {
-    "name": "Havla",
+    "name": "Janik Havla",
     "party": "DIE LINKE / Die PARTEI",
     "votes": 160,
     "id": 5
