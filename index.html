@@ -348,7 +348,10 @@
                                         anchor: 'end',
                                         align: 'top',
                                         formatter: function (value) {
-                                            return Number(value).toFixed(1) + '%';
+                                            return new Intl.NumberFormat('de-DE', {
+                                                minimumFractionDigits: 1,
+                                                maximumFractionDigits: 1
+                                            }).format(value) + '%';
                                         },
                                         font: { size: 10, weight: 'bold' },
                                         color: '#374151'
