@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karlstadt 2026 Live</title>
+    <title>Kommunalwahl Karlstadt</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Alpine.js -->
@@ -35,7 +35,7 @@
 
     <!-- Sticky Header & Filter Bar -->
     <header class="sticky-header bg-white shadow-md p-4">
-        <h1 class="text-xl font-bold text-center mb-3 text-gray-800">Kommunalwahl Karlstadt</h1>
+        <h1 class="text-xl font-bold text-center mb-3 text-gray-800">Kommunalwahl Karlstadt <span x-text="year ? year : ''"></span></h1>
 
         <!-- View mode toggles -->
         <div class="flex gap-2 mb-2">
@@ -80,6 +80,9 @@
     </header>
 
     <main class="p-4">
+
+        <!-- Timestamp (non-sticky, top of scrollable content) -->
+        <p x-show="timestamp" class="text-xs text-gray-400 mb-4" x-text="'Stand: ' + timestamp"></p>
 
         <!-- Party Strength Chart -->
         <div x-show="viewMode==='candidates'" class="bg-white rounded-xl shadow-sm p-4 mb-6">
@@ -148,11 +151,13 @@
             return {
                 parties: [],
                 allCandidates: [],
-                mayorCandidates2020: [],
+                mayorCandidates: [],
                 selectedParties: [],
                 viewMode: 'candidates',
                 filtersOpen: false,
                 chartInstance: null,
+                year: null,
+                timestamp: null,
 
                 async init() {
                     await this.fetchData();
@@ -162,17 +167,50 @@
 
                 async fetchData() {
                     try {
-                        const response = await fetch('candidates_2020.json?t=' + new Date().getTime());
-                        if (!response.ok) throw new Error('Network response was not ok');
+                        // Load metadata (try 2026 first, fall back to 2020)
+                        let year = this.year;
+                        for (const y of ['2026', '2020']) {
+                            try {
+                                const metaResp = await fetch(`meta_${y}.json?t=` + new Date().getTime());
+                                if (metaResp.ok) {
+                                    const meta = await metaResp.json();
+                                    year = meta.year || y;
+                                    this.year = year;
+                                    document.title = 'Kommunalwahl Karlstadt ' + year;
+                                    const ts = new Date(meta.timestamp);
+                                    this.timestamp = ts.toLocaleString('de-DE');
+                                    break;
+                                }
+                            } catch (e) {
+                                // try next year
+                            }
+                        }
+
+                        // If no meta file was found, default to 2020 for backward compatibility
+                        if (!year) year = '2020';
+
+                        // Load candidates for the selected year, with a 404 fallback from 2026 to 2020
+                        let response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
+                        if (!response.ok) {
+                            if (response.status === 404 && year === '2026') {
+                                year = '2020';
+                                this.year = year;
+                                document.title = 'Kommunalwahl Karlstadt ' + year;
+                                response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
+                            }
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                        }
                         const data = await response.json();
 
                         this.parties = data;
 
                         // Try to load mayor candidates JSON (optional)
                         try {
-                            const mResp = await fetch('mayor_2020.json?t=' + new Date().getTime());
+                            const mResp = await fetch(`mayor_${year}.json?t=` + new Date().getTime());
                             if (mResp.ok) {
-                                this.mayorCandidates2020 = await mResp.json();
+                                this.mayorCandidates = await mResp.json();
                             }
                         } catch (e) {
                             // ignore if file missing
@@ -228,9 +266,9 @@
 
                 get topCandidatesPerParty() {
                     // Prefer explicit mayor JSON if available
-                    if (this.mayorCandidates2020 && this.mayorCandidates2020.length > 0) {
+                    if (this.mayorCandidates && this.mayorCandidates.length > 0) {
                         // Map mayor candidates to include party color if possible
-                        return this.mayorCandidates2020.map(c => {
+                        return this.mayorCandidates.map(c => {
                             const party = this.parties.find(p => p.id === c.party || p.name === c.party) || {};
                             return {
                                 id: c.id,

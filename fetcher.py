@@ -2,20 +2,31 @@ import urllib.request
 from bs4 import BeautifulSoup
 import json
 import sys
+from datetime import datetime, timezone
 
 # fmt: off
-ELECTION_URL = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
-MAYOR_URL = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+ELECTION_URL_2020 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+MAYOR_URL_2020 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+ELECTION_URL_2026 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2026-03-08/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+MAYOR_URL_2026 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2026-03-08/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
 # fmt: on
-OUTPUT_FILE = "candidates_2020.json"
-MAYOR_OUTPUT = "mayor_2020.json"
+
+URLS = {
+    "2020": (ELECTION_URL_2020, MAYOR_URL_2020),
+    "2026": (ELECTION_URL_2026, MAYOR_URL_2026),
+}
 
 
-def fetch_data():
-    print(f"Fetching data from {ELECTION_URL}...")
+def fetch_data(year):
+    election_url, mayor_url = URLS[year]
+    output_file = f"candidates_{year}.json"
+    mayor_output = f"mayor_{year}.json"
+    meta_output = f"meta_{year}.json"
+
+    print(f"Fetching data from {election_url}...")
     try:
         req = urllib.request.Request(
-            ELECTION_URL, headers={"User-Agent": "Mozilla/5.0"}
+            election_url, headers={"User-Agent": "Mozilla/5.0"}
         )
         with urllib.request.urlopen(req) as response:
             html = response.read().decode("utf-8")
@@ -153,16 +164,17 @@ def fetch_data():
 
         # Save council candidates to file
         final_data = list(parties.values())
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(final_data, f, ensure_ascii=False, indent=2)
             f.write("\n")
 
-        print(f"Saved {len(final_data)} parties with candidate data to {OUTPUT_FILE}")
+        print(f"Saved {len(final_data)} parties with candidate data to {output_file}")
 
         # 3. Fetch mayor page and extract mayor candidates (separate vote)
+        mayor_ok = False
         try:
             mreq = urllib.request.Request(
-                MAYOR_URL, headers={"User-Agent": "Mozilla/5.0"}
+                mayor_url, headers={"User-Agent": "Mozilla/5.0"}
             )
             with urllib.request.urlopen(mreq) as mresp:
                 mhtml = mresp.read().decode("utf-8")
@@ -233,13 +245,22 @@ def fetch_data():
             for idx, r in enumerate(mayor_list, start=1):
                 r["id"] = idx
 
-            with open(MAYOR_OUTPUT, "w", encoding="utf-8") as f:
+            with open(mayor_output, "w", encoding="utf-8") as f:
                 json.dump(mayor_list, f, ensure_ascii=False, indent=2)
                 f.write("\n")
 
-            print(f"Saved {len(mayor_list)} mayor candidates to {MAYOR_OUTPUT}")
+            print(f"Saved {len(mayor_list)} mayor candidates to {mayor_output}")
+            mayor_ok = True
         except Exception as me:
             print(f"Error fetching/parsing mayor page: {me}")
+
+        # Write metadata file with year and timestamp
+        timestamp = datetime.now(timezone.utc).isoformat()
+        meta = {"year": year, "timestamp": timestamp, "mayor_ok": mayor_ok}
+        with open(meta_output, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print(f"Saved metadata to {meta_output}")
 
         return True
 
@@ -249,7 +270,11 @@ def fetch_data():
 
 
 if __name__ == "__main__":
-    print("Running fetcher once...")
-    ok = fetch_data()
+    if len(sys.argv) != 2 or sys.argv[1] not in ("2020", "2026"):
+        print("Usage: python fetcher.py <year>  (year must be 2020 or 2026)")
+        sys.exit(2)
+    year_arg = sys.argv[1]
+    print(f"Running fetcher for year {year_arg}...")
+    ok = fetch_data(year_arg)
     if not ok:
         sys.exit(1)
