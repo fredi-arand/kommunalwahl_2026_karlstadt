@@ -183,10 +183,21 @@
                             }
                         }
 
-                        if (!year) year = '2026';
+                        // If no meta file was found, default to 2020 for backward compatibility
+                        if (!year) year = '2020';
 
-                        const response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
-                        if (!response.ok) throw new Error('Network response was not ok');
+                        // Load candidates for the selected year, with a 404 fallback from 2026 to 2020
+                        let response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
+                        if (!response.ok) {
+                            if (response.status === 404 && year === '2026') {
+                                year = '2020';
+                                this.year = year;
+                                response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
+                            }
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                        }
                         const data = await response.json();
 
                         this.parties = data;

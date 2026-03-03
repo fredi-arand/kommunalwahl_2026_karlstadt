@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 # fmt: off
 ELECTION_URL_2020 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
 MAYOR_URL_2020 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2020-03-15/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
-ELECTION_URL_2026 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2026-03-15/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
-MAYOR_URL_2026 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2026-03-15/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+ELECTION_URL_2026 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2026-03-08/09677148/html5/Gemeinderatswahl_Bayern_110_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
+MAYOR_URL_2026 = "https://okvote.osrz-akdb.de/OK.VOTE_UF/Wahl-2026-03-08/09677148/html5/Buergermeisterwahl_Bayern_108_Gemeinde_Stadt_Karlstadt.html"  # noqa: E501
 # fmt: on
 
 URLS = {
@@ -171,6 +171,7 @@ def fetch_data(year):
         print(f"Saved {len(final_data)} parties with candidate data to {output_file}")
 
         # 3. Fetch mayor page and extract mayor candidates (separate vote)
+        mayor_ok = False
         try:
             mreq = urllib.request.Request(
                 mayor_url, headers={"User-Agent": "Mozilla/5.0"}
@@ -249,12 +250,13 @@ def fetch_data(year):
                 f.write("\n")
 
             print(f"Saved {len(mayor_list)} mayor candidates to {mayor_output}")
+            mayor_ok = True
         except Exception as me:
             print(f"Error fetching/parsing mayor page: {me}")
 
         # Write metadata file with year and timestamp
         timestamp = datetime.now(timezone.utc).isoformat()
-        meta = {"year": year, "timestamp": timestamp}
+        meta = {"year": year, "timestamp": timestamp, "mayor_ok": mayor_ok}
         with open(meta_output, "w", encoding="utf-8") as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
             f.write("\n")
