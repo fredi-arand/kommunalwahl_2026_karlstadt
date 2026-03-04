@@ -10,7 +10,9 @@
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+    <!-- Chart.js data labels plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
     <style>
         /* Neutral, high-contrast theme */
@@ -131,7 +133,8 @@
                             <div class="text-right">
                                 <div class="text-2xl font-black text-gray-800"
                                     x-text="candidate.votes.toLocaleString('de-DE')"></div>
-                                <div class="text-xs text-gray-400">Stimmen</div>
+                                <div class="text-xs text-gray-400"
+                                    x-text="candidate.percent !== null ? candidate.percent + '\u202f%' : 'Stimmen'"></div>
                             </div>
                         </div>
                     </template>
@@ -147,6 +150,8 @@
     </main>
 
     <script>
+        const percentFormatter = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
         function electionDashboard() {
             return {
                 parties: [],
@@ -267,13 +272,16 @@
                 get topCandidatesPerParty() {
                     // Prefer explicit mayor JSON if available
                     if (this.mayorCandidates && this.mayorCandidates.length > 0) {
+                        const totalVotes = this.mayorCandidates.reduce((sum, c) => sum + (c.votes || 0), 0);
                         // Map mayor candidates to include party color if possible
                         return this.mayorCandidates.map(c => {
                             const party = this.parties.find(p => p.id === c.party || p.name === c.party) || {};
+                            const votes = c.votes || 0;
                             return {
                                 id: c.id,
                                 name: c.name,
-                                votes: c.votes || 0,
+                                votes,
+                                percent: totalVotes > 0 ? percentFormatter.format(votes / totalVotes * 100) : null,
                                 partyId: c.party,
                                 partyName: c.party,
                                 partyColor: party.color || '#CCCCCC'
@@ -281,7 +289,7 @@
                         }).sort((a, b) => b.votes - a.votes);
                     }
 
-                    return this.parties
+                    const candidates = this.parties
                         .filter(p => p.id !== 'Unknown' && p.name !== 'Unknown')
                         .map(p => {
                             const sorted = (p.candidates || []).slice().sort((a, b) => b.votes - a.votes);
@@ -293,7 +301,12 @@
                                 partyName: p.name,
                                 partyColor: p.color
                             };
-                        }).filter(Boolean).sort((a, b) => b.votes - a.votes);
+                        }).filter(Boolean);
+
+                    const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+                    return candidates
+                        .map(c => ({ ...c, percent: totalVotes > 0 ? percentFormatter.format(c.votes / totalVotes * 100) : null }))
+                        .sort((a, b) => b.votes - a.votes);
                 },
 
                 updateChart() {
@@ -328,8 +341,20 @@
                                 responsive: true,
                                 maintainAspectRatio: false,
                                 indexAxis: 'x',
+                                layout: {
+                                    padding: { top: 20 }
+                                },
                                 plugins: {
-                                    legend: { display: false }
+                                    legend: { display: false },
+                                    datalabels: {
+                                        anchor: 'end',
+                                        align: 'top',
+                                        formatter: function (value) {
+                                            return percentFormatter.format(value) + '%';
+                                        },
+                                        font: { size: 10, weight: 'bold' },
+                                        color: '#374151'
+                                    }
                                 },
                                 scales: {
                                     y: {
