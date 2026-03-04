@@ -6,6 +6,7 @@ A lightweight, mobile-first dashboard for displaying live election results for t
 - **Backend**: `fetcher.py` is now a CLI entrypoint. The core logic is split into modules under `election_fetcher/`:
     - `network.py` for retry/backoff-aware HTTP fetching
     - `parser.py` for council/mayor HTML parsing
+    - `csv_fallback.py` for parsing archived Open-Data CSVs and applying persisted `D*` mappings
     - `service.py` for orchestration and writing `candidates_<year>.json`, `mayor_<year>.json`, `meta_<year>.json`
 - **Frontend**: `index.html` serves a responsive, mobile-first UI using Tailwind CSS for styling, Alpine.js for real-time reactivity (fuzzy search and party filters), and Chart.js for visualizing party strengths.
 
@@ -69,3 +70,10 @@ pytest tests/test_network.py tests/test_service.py -q
 These tests explicitly simulate common election-night issues such as transient outages (`URLError`), retryable server overload responses (`HTTP 503`), and complete endpoint failure.
 
 For historical data structure details and fallback strategies involving the CSV files, refer to `Observations.md`.
+
+## Council CSV Fallback
+
+- Archived CSVs are stored in `data/csv/<year>/` (for 2020: `data/csv/2020/Open-Data-Gemeinderatswahl-Bayern1103.csv` and `...1106.csv`).
+- A one-time mapping between CSV `D*`/`D*_n` columns and party/candidate names is persisted in `data/mappings/council_csv_mapping_<year>.json`.
+- `python fetcher.py <year>` will keep trying HTML first. If council HTML fails, it falls back to CSV + mapping to populate `candidates_<year>.json`.
+- Mayor data remains best-effort from HTML (`meta_<year>.json` contains `mayor_ok` and `council_source`).
