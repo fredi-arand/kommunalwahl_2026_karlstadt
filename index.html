@@ -152,6 +152,10 @@
     <script>
         const percentFormatter = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
+        if (window.ChartDataLabels) {
+            Chart.register(ChartDataLabels);
+        }
+
         function electionDashboard() {
             return {
                 parties: [],
