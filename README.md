@@ -2,15 +2,11 @@
 
 **Live Website:** https://kommunalwahl-2026-karlstadt.vercel.app
 
-A lightweight, mobile-first dashboard for displaying live election results for the Karlstadt 2026 local elections. The system comprises a Python data fetcher that scrapes the official AKDB/Votemanager election results and an Alpine.js/Tailwind CSS frontend for real-time visualization.
+A lightweight, mobile-first dashboard for displaying live election results for the Karlstadt 2026 local elections. The system uses a small Python downloader for CSV collection and a static frontend for visualization.
 
 ## Architecture
-- **Backend**: `fetcher.py` is now a CLI entrypoint. The core logic is split into modules under `election_fetcher/`:
-    - `network.py` for retry/backoff-aware HTTP fetching
-    - `parser.py` for council/mayor HTML parsing
-    - `csv_fallback.py` for parsing archived Open-Data CSVs and applying persisted `D*` mappings
-    - `service.py` for orchestration and writing `candidates_<year>.json`, `mayor_<year>.json`, `meta_<year>.json`
-- **Frontend**: `index.html` serves a responsive, mobile-first UI using Tailwind CSS for styling, Alpine.js for real-time reactivity (fuzzy search and party filters), and Chart.js for visualizing party strengths.
+- **Backend**: `download_csv.py` contains the complete 2026 scraping/downloading logic. `fetcher.py` is a compatibility CLI wrapper around it.
+- **Frontend**: `index.html` reads `meta.json`, `candidates.json`, and `mayor.json` (JSON-first, 2026-only). Tailwind CSS is used for styling, Alpine.js for reactivity, and Chart.js for visualizations.
 
 ## Setup Instructions
 
@@ -29,20 +25,20 @@ Make sure you have Python 3 installed. This project uses a virtual environment t
 To serve the dashboard to guests in the pub via the local Wi-Fi, follow these steps:
 
 1. **Start the Data Fetcher**:
-    Open a terminal, activate the environment, and run the fetcher script. By default it fetches the latest configured year.
+    Open a terminal, activate the environment, and run the 2026 downloader.
     ```bash
     source .venv/bin/activate
-    python fetcher.py
+    python download_csv.py --attempts 1
     ```
 
-    For election night (more robust under high load), run with stronger retry settings:
+    For election night polling (wait until council CSV becomes available):
     ```bash
-    python fetcher.py 2026 --retries 6 --timeout 20 --backoff 1.5
+    python download_csv.py --attempts 60 --interval 30 --timeout 20
     ```
 
-    If you want periodic updates every 60 seconds:
+    If you prefer compatibility with old commands, this also works:
     ```bash
-    while true; do python fetcher.py 2026 --retries 6 --timeout 20 --backoff 1.5; sleep 60; done
+    python fetcher.py --attempts 60 --interval 30 --timeout 20
     ```
 
 2. **Start the Local Web Server**:
@@ -64,18 +60,21 @@ Run all tests:
 pytest
 ```
 
-Run only network stress/failure simulations:
+### Smoke Test
+Quick end-to-end check (downloader + generated files):
 ```bash
-pytest tests/test_network.py tests/test_service.py -q
+python download_csv.py --attempts 1 --timeout 20 && ls -1 meta.json mayor.json candidates.json data/csv/Stimmenanteile_tabellarisch.csv
 ```
 
-These tests explicitly simulate common election-night issues such as transient outages (`URLError`), retryable server overload responses (`HTTP 503`), and complete endpoint failure.
+## 2026 CSV Automation (`wahlen.osrz-akdb.de`)
 
-For historical data structure details and fallback strategies involving the CSV files, refer to `Observations.md`.
+For the 2026 site, mayor CSV export is generated from the displayed table and council CSVs are listed on the press page. You can automate both with:
 
-## Council CSV Fallback
+```bash
+python download_csv.py --attempts 60 --interval 30
+```
 
-- Archived CSVs are stored in `data/csv/<year>/` (for 2020: `data/csv/2020/Open-Data-Gemeinderatswahl-Bayern1103.csv` and `...1106.csv`).
-- A one-time mapping between CSV `D*`/`D*_n` columns and party/candidate names is persisted in `data/mappings/council_csv_mapping_<year>.json`.
-- `python fetcher.py <year>` will keep trying HTML first. If council HTML fails, it falls back to CSV + mapping to populate `candidates_<year>.json`.
-- Mayor data remains best-effort from HTML (`meta_<year>.json` contains `mayor_ok` and `council_source`).
+- Writes files into `data/csv/` by default.
+- Always refreshes the mayor table CSV (`Stimmenanteile_tabellarisch.csv`).
+- Polls for council CSV publication (e.g. `gesamtergebnis.csv`) and saves it as soon as it is publicly reachable.
+- Also writes frontend JSON files (`meta.json`, `candidates.json`, `mayor.json`) in the project root by default (`--json-dir` to change).

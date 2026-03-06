@@ -12,7 +12,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
     <!-- Chart.js data labels plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
     <style>
         /* Neutral, high-contrast theme */
@@ -37,22 +38,22 @@
 
     <!-- Sticky Header & Filter Bar -->
     <header class="sticky-header bg-white shadow-md p-4">
-        <h1 class="text-xl font-bold text-center mb-3 text-gray-800">Kommunalwahl Karlstadt <span x-text="year ? year : ''"></span></h1>
+        <h1 class="text-xl font-bold text-center mb-3 text-gray-800">Kommunalwahl Karlstadt <span
+                x-text="year ? year : ''"></span></h1>
 
         <!-- View mode toggles -->
         <div class="flex gap-2 mb-2">
-            <button @click="viewMode='candidates'"
-                :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
-                class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
             <button @click="viewMode='mayor'"
                 :class="viewMode==='mayor'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Bürgermeister</button>
+            <button @click="viewMode='candidates'"
+                :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
+                class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
         </div>
 
         <!-- Party Filter (collapsible, only in candidates view) -->
         <div x-show="viewMode==='candidates'" class="mt-2 bg-gray-100 rounded-lg border border-gray-200">
-            <button @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen.toString()"
-                id="filter-toggle"
+            <button @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen.toString()" id="filter-toggle"
                 class="touch-target w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600">
                 <span>
                     Filter
@@ -134,7 +135,8 @@
                                 <div class="text-2xl font-black text-gray-800"
                                     x-text="candidate.votes.toLocaleString('de-DE')"></div>
                                 <div class="text-xs text-gray-400"
-                                    x-text="candidate.percent !== null ? candidate.percent + '\u202f%' : 'Stimmen'"></div>
+                                    x-text="candidate.percent !== null ? candidate.percent + '\u202f%' : 'Stimmen'">
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -142,7 +144,7 @@
 
                 <div x-show="(viewMode==='candidates' && filteredCandidates.length === 0) || (viewMode==='mayor' && topCandidatesPerParty.length === 0)"
                     class="text-center py-8 text-gray-500">
-                    Keine Kandidaten gefunden.
+                    <span x-text="emptyStateText"></span>
                 </div>
             </div>
         </div>
@@ -151,8 +153,8 @@
 
     <footer class="text-center py-4 text-xs text-gray-400">
         <a href="https://github.com/fredi-arand/kommunalwahl_2026_karlstadt" target="_blank" rel="noopener noreferrer"
-            aria-label="GitHub Repository (opens in new tab)"
-            class="hover:text-gray-600 underline">GitHub Repository</a>
+            aria-label="GitHub Repository (opens in new tab)" class="hover:text-gray-600 underline">GitHub
+            Repository</a>
     </footer>
 
     <script>
@@ -168,11 +170,13 @@
                 allCandidates: [],
                 mayorCandidates: [],
                 selectedParties: [],
-                viewMode: 'candidates',
+                viewMode: 'mayor',
                 filtersOpen: false,
                 chartInstance: null,
-                year: null,
+                year: '2026',
                 timestamp: null,
+                councilCandidatesAvailable: false,
+                councilCsvAvailable: false,
 
                 async init() {
                     await this.fetchData();
@@ -182,53 +186,47 @@
 
                 async fetchData() {
                     try {
-                        // Load metadata (try 2026 first, fall back to 2020)
-                        let year = this.year;
-                        for (const y of ['2026', '2020']) {
-                            try {
-                                const metaResp = await fetch(`meta_${y}.json?t=` + new Date().getTime());
-                                if (metaResp.ok) {
-                                    const meta = await metaResp.json();
-                                    year = meta.year || y;
-                                    this.year = year;
-                                    document.title = 'Kommunalwahl Karlstadt ' + year;
+                        this.year = '2026';
+                        document.title = 'Kommunalwahl Karlstadt 2026';
+
+                        // Metadata (optional but preferred)
+                        try {
+                            const metaResp = await fetch('meta.json?t=' + new Date().getTime());
+                            if (metaResp.ok) {
+                                const meta = await metaResp.json();
+                                if (meta.timestamp) {
                                     const ts = new Date(meta.timestamp);
                                     this.timestamp = ts.toLocaleString('de-DE');
-                                    break;
                                 }
-                            } catch (e) {
-                                // try next year
-                            }
-                        }
-
-                        // If no meta file was found, default to 2020 for backward compatibility
-                        if (!year) year = '2020';
-
-                        // Load candidates for the selected year, with a 404 fallback from 2026 to 2020
-                        let response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
-                        if (!response.ok) {
-                            if (response.status === 404 && year === '2026') {
-                                year = '2020';
-                                this.year = year;
-                                document.title = 'Kommunalwahl Karlstadt ' + year;
-                                response = await fetch(`candidates_${year}.json?t=` + new Date().getTime());
-                            }
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                        }
-                        const data = await response.json();
-
-                        this.parties = data;
-
-                        // Try to load mayor candidates JSON (optional)
-                        try {
-                            const mResp = await fetch(`mayor_${year}.json?t=` + new Date().getTime());
-                            if (mResp.ok) {
-                                this.mayorCandidates = await mResp.json();
+                                this.councilCandidatesAvailable = !!meta.councilCandidatesAvailable;
+                                this.councilCsvAvailable = !!meta.councilCsvAvailable;
                             }
                         } catch (e) {
-                            // ignore if file missing
+                            // keep defaults if metadata is missing
+                        }
+
+                        // Council candidates JSON (may be empty before publication)
+                        try {
+                            const candidatesResp = await fetch('candidates.json?t=' + new Date().getTime());
+                            if (candidatesResp.ok) {
+                                this.parties = await candidatesResp.json();
+                            } else {
+                                this.parties = [];
+                            }
+                        } catch (e) {
+                            this.parties = [];
+                        }
+
+                        // Mayor candidates JSON (optional)
+                        try {
+                            const mayorResp = await fetch('mayor.json?t=' + new Date().getTime());
+                            if (mayorResp.ok) {
+                                this.mayorCandidates = await mayorResp.json();
+                            } else {
+                                this.mayorCandidates = [];
+                            }
+                        } catch (e) {
+                            this.mayorCandidates = [];
                         }
 
                         // Flatten candidates for the list view (exclude aggregated/Unknown group)
@@ -277,6 +275,19 @@
                     }
 
                     return filtered;
+                },
+
+                get emptyStateText() {
+                    if (this.viewMode === 'mayor') {
+                        return 'Keine Bürgermeisterkandidaten gefunden.';
+                    }
+                    if (this.councilCandidatesAvailable) {
+                        return 'Keine Stadtratskandidaten gefunden.';
+                    }
+                    if (this.councilCsvAvailable) {
+                        return 'Stadtrats-CSV ist veröffentlicht, die Aufbereitung läuft noch.';
+                    }
+                    return 'Stadtrats-Ergebnisse sind noch nicht veröffentlicht.';
                 },
 
                 get topCandidatesPerParty() {

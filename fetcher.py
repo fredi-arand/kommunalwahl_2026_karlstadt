@@ -1,61 +1,60 @@
 import argparse
 import sys
-from election_fetcher.config import URLS
-from election_fetcher.service import fetch_data
+
+from download_csv import main as download_main
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    years = sorted(URLS.keys())
-    default_year = years[-1]
-
     parser = argparse.ArgumentParser(
-        description="Fetch council and mayor results for Karlstadt elections."
-    )
-    parser.add_argument(
-        "year",
-        nargs="?",
-        choices=years,
-        default=default_year,
-        help=f"Election year (default: {default_year})",
+        description="Fetch and store 2026 CSV results for Karlstadt elections."
     )
     parser.add_argument(
         "--timeout",
         type=float,
-        default=15.0,
-        help="Network timeout in seconds per request (default: 15).",
+        default=20.0,
+        help="Network timeout in seconds per request (default: 20).",
     )
     parser.add_argument(
-        "--retries",
+        "--attempts",
         type=int,
-        default=4,
-        help="Retry attempts for transient network failures (default: 4).",
+        default=1,
+        help="How many times to poll for council CSV availability (default: 1).",
     )
     parser.add_argument(
-        "--backoff",
+        "--interval",
         type=float,
-        default=1.0,
-        help="Exponential backoff base in seconds (default: 1.0).",
+        default=30.0,
+        help="Seconds between attempts (default: 30).",
     )
     parser.add_argument(
         "--output-dir",
+        default="data/csv",
+        help="Directory where CSV files are written.",
+    )
+    parser.add_argument(
+        "--json-dir",
         default=".",
-        help="Directory where candidates_*.json, mayor_*.json and meta_*.json are written.",
+        help="Directory where JSON files are written.",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    print(f"Running fetcher for year {args.year}...")
-
-    ok = fetch_data(
-        args.year,
-        output_dir=args.output_dir,
-        timeout=args.timeout,
-        retries=args.retries,
-        backoff_factor=args.backoff,
-    )
-    return 0 if ok else 1
+    print("Running 2026 CSV downloader...")
+    downloader_argv = [
+        "--output-dir",
+        args.output_dir,
+        "--json-dir",
+        args.json_dir,
+        "--attempts",
+        str(args.attempts),
+        "--interval",
+        str(args.interval),
+        "--timeout",
+        str(args.timeout),
+    ]
+    return download_main(downloader_argv)
 
 
 if __name__ == "__main__":
