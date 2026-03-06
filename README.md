@@ -1,5 +1,7 @@
 # Karlstadt 2026 Local Election Dashboard
 
+**Live Website:** https://kommunalwahl-2026-karlstadt.vercel.app
+
 A lightweight, mobile-first dashboard for displaying live election results for the Karlstadt 2026 local elections. The system comprises a Python data fetcher that scrapes the official AKDB/Votemanager election results and an Alpine.js/Tailwind CSS frontend for real-time visualization.
 
 ## Architecture
