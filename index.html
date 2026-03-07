@@ -98,14 +98,6 @@
             </div>
         </div>
 
-        <div x-show="filtersOpen || showUpdateHistory" class="mt-0.5">
-            <button @click="collapsePanels()"
-                class="w-full h-6 rounded-md bg-gray-100 border border-gray-200 text-gray-600 flex items-center justify-center">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-            </button>
-        </div>
     </header>
 
     <main class="p-4">
@@ -220,12 +212,24 @@
                 latestPayloadSignature: null,
                 actualUpdateTimestamps: [],
                 showUpdateHistory: false,
+                lastScrollY: 0,
 
                 async init() {
                     this.loadCachedData();
                     this.loadUpdateHistory();
                     await this.fetchData();
                     setInterval(() => this.fetchData(), 30000);
+                    this.lastScrollY = window.scrollY || 0;
+                    window.addEventListener('scroll', () => this.handleScrollCollapse(), { passive: true });
+                },
+
+                handleScrollCollapse() {
+                    const currentScrollY = window.scrollY || 0;
+                    const scrolledUp = currentScrollY < this.lastScrollY - 2;
+                    if (scrolledUp && (this.filtersOpen || this.showUpdateHistory)) {
+                        this.collapsePanels();
+                    }
+                    this.lastScrollY = currentScrollY;
                 },
 
                 loadUpdateHistory() {
