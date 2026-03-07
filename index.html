@@ -49,27 +49,40 @@
             <button @click="viewMode='candidates'"
                 :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
-            <button @click="fetchData()"
-                class="touch-target ml-auto px-4 py-2 rounded-full font-semibold border-2 bg-gray-100 text-gray-700 transition">↻</button>
+        </div>
+
+        <div x-show="timestamp" class="mt-1">
+            <div class="flex items-center gap-2">
+                <button @click="toggleUpdateHistory()"
+                    class="flex-1 text-left text-sm font-semibold text-gray-700 touch-target"
+                    x-text="'Stand: ' + timestamp"></button>
+                <button x-show="viewMode==='candidates'" @click="filtersOpen = !filtersOpen"
+                    :aria-expanded="filtersOpen.toString()" id="filter-toggle"
+                    class="touch-target px-3 py-1.5 rounded-lg bg-gray-100 text-sm font-semibold text-gray-600 border border-gray-200 flex items-center gap-1">
+                    <span>Filter</span>
+                    <span x-show="selectedParties.length > 0"
+                        class="text-xs bg-gray-700 text-white rounded-full px-1.5 py-0.5"
+                        x-text="selectedParties.length"></span>
+                </button>
+            </div>
+            <div x-show="showUpdateHistory" class="mt-1 text-xs text-gray-500">
+                <template x-if="actualUpdateTimestamps.length > 0">
+                    <div>
+                        <p class="mb-1">Änderungen erkannt um:</p>
+                        <template x-for="entry in actualUpdateTimestamps" :key="entry">
+                            <p x-text="entry"></p>
+                        </template>
+                    </div>
+                </template>
+                <template x-if="actualUpdateTimestamps.length === 0">
+                    <p>Noch keine Änderungen erkannt.</p>
+                </template>
+            </div>
         </div>
 
         <!-- Party Filter (collapsible, only in candidates view) -->
-        <div x-show="viewMode==='candidates'" class="mt-2 bg-gray-100 rounded-lg border border-gray-200">
-            <button @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen.toString()" id="filter-toggle"
-                class="touch-target w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600">
-                <span>
-                    Filter
-                    <span x-show="selectedParties.length > 0"
-                        class="ml-1 text-xs bg-gray-700 text-white rounded-full px-1.5 py-0.5"
-                        x-text="selectedParties.length"></span>
-                </span>
-                <svg :class="filtersOpen ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none"
-                    stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-            <div x-show="filtersOpen" role="region" aria-labelledby="filter-toggle"
-                class="flex flex-wrap gap-2 px-3 pb-3">
+        <div x-show="viewMode==='candidates' && filtersOpen" class="mt-2 bg-gray-100 rounded-lg border border-gray-200">
+            <div role="region" aria-labelledby="filter-toggle" class="flex flex-wrap gap-2 px-3 py-3">
                 <template x-for="party in parties" :key="party.id">
                     <button @click="toggleParty(party.id)"
                         class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition whitespace-nowrap"
@@ -87,9 +100,6 @@
     <main class="p-4">
 
         <!-- Timestamp (non-sticky, top of scrollable content) -->
-        <p x-show="timestamp" class="text-xs text-gray-400 mb-4" x-text="'Stand: ' + timestamp"></p>
-        <p x-show="refreshStatus" class="text-xs text-gray-500 mb-4" x-text="refreshStatus"></p>
-
         <!-- Party Strength Chart -->
         <div x-show="viewMode==='candidates'" class="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 class="text-lg font-bold mb-2 text-gray-700">Parteistimmen (%)</h2>
@@ -162,7 +172,12 @@
 
     <script>
         const percentFormatter = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-        const dateTimeFormatter = new Intl.DateTimeFormat('de-DE', {
+        const standTimeFormatter = new Intl.DateTimeFormat('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        const historyDateTimeFormatter = new Intl.DateTimeFormat('de-DE', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -189,12 +204,51 @@
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v1',
+                actualUpdatesKey: 'karlstadt-election-actual-updates-v1',
                 refreshStatus: '',
                 latestPayloadSignature: null,
+                actualUpdateTimestamps: [],
+                showUpdateHistory: false,
 
                 async init() {
                     this.loadCachedData();
+                    this.loadUpdateHistory();
                     await this.fetchData();
+                    setInterval(() => this.fetchData(), 30000);
+                },
+
+                loadUpdateHistory() {
+                    try {
+                        const raw = localStorage.getItem(this.actualUpdatesKey);
+                        if (!raw) return;
+                        const parsed = JSON.parse(raw);
+                        if (!Array.isArray(parsed)) return;
+                        this.actualUpdateTimestamps = parsed.filter(item => typeof item === 'string');
+                    } catch (e) {
+                        // ignore cache issues
+                    }
+                },
+
+                saveUpdateHistory() {
+                    try {
+                        localStorage.setItem(this.actualUpdatesKey, JSON.stringify(this.actualUpdateTimestamps));
+                    } catch (error) {
+                        console.warn('Could not persist update history in localStorage:', error);
+                    }
+                },
+
+                recordActualUpdate() {
+                    const updateTimestamp = historyDateTimeFormatter.format(new Date());
+                    if (this.actualUpdateTimestamps[0] === updateTimestamp) return;
+                    this.actualUpdateTimestamps = [
+                        updateTimestamp,
+                        ...this.actualUpdateTimestamps.filter(entry => entry !== updateTimestamp)
+                    ].slice(0, 3);
+                    this.saveUpdateHistory();
+                },
+
+                toggleUpdateHistory() {
+                    this.showUpdateHistory = !this.showUpdateHistory;
                 },
 
                 payloadSignature(payload) {
@@ -230,10 +284,10 @@
                     this.year = payload.year || '2026';
                     document.title = 'Kommunalwahl Karlstadt ' + this.year;
 
-                    if (payload.timestamp) {
+                    if (!this.timestamp && payload.timestamp) {
                         const ts = new Date(payload.timestamp);
                         if (!isNaN(ts.getTime())) {
-                            this.timestamp = dateTimeFormatter.format(ts);
+                            this.timestamp = standTimeFormatter.format(ts);
                         }
                     }
 
@@ -322,6 +376,7 @@
 
                         this.latestPayloadSignature = incomingSignature;
                         this.applyPayload(payload);
+                        this.timestamp = standTimeFormatter.format(new Date());
                         try {
                             localStorage.setItem(this.cacheKey, JSON.stringify(payload));
                         } catch (error) {
@@ -334,11 +389,9 @@
                         } else if (usedStaleCache) {
                             this.refreshStatus = 'Quelle kurz nicht erreichbar · zwischengespeicherte Daten · zuletzt geprüft: ' + nowText;
                         } else if (contentChanged) {
-                            this.refreshStatus = 'Aktualisiert · zuletzt geprüft: ' + nowText;
-                        } else if (this.timestamp) {
-                            this.refreshStatus = 'Keine Änderung · zuletzt geprüft: ' + nowText;
+                            this.recordActualUpdate();
                         } else {
-                            this.refreshStatus = 'Keine Änderung · zuletzt geprüft: ' + nowText;
+                            this.refreshStatus = '';
                         }
                     } catch (error) {
                         console.error('Error fetching API data:', error);

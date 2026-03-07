@@ -7,7 +7,7 @@ A lightweight, mobile-first dashboard for displaying live election results for t
 ## Architecture
 - **Shared parser/fetch layer**: `election_source.py` contains the 2026 source URLs and parsing helpers.
 - **Vercel API**: `api/results.py` is a serverless proxy endpoint (`/api/results`) that fetches the official source, parses it, and returns frontend-ready JSON.
-- **Frontend**: `index.html` reads `/api/results`, caches the last payload in `localStorage`, and offers a manual refresh button.
+- **Frontend**: `index.html` reads `/api/results`, caches the last payload in `localStorage`, auto-refreshes every 30 seconds, and shows a tappable sticky `Stand` line with detected data-change timestamps.
 
 ### Official Data Sources (2026)
 - **Mayor election**: `.../buergermeisterwahl_gemeinde/ergebnisse.html`
@@ -60,5 +60,5 @@ pytest
 - No browser CORS access to `wahlen.osrz-akdb.de` is required, because the fetch happens server-side inside Vercel.
 - API-side caching uses a 60-second TTL to avoid frequent upstream fetches from official election sources.
 - Shared HTTP caching headers are set to 60 seconds (`max-age=60`, `s-maxage=60`).
-- Client-side caching is handled in the browser (`localStorage`) and refreshed on demand via the UI refresh button.
+- Client-side caching is handled in the browser (`localStorage`) with automatic refresh polling every 30 seconds.
 - Health/debug check is available via `/api/results?debug=1` (includes fetch duration and source metadata).
