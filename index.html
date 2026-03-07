@@ -177,82 +177,81 @@
                 timestamp: null,
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
+                cacheKey: 'karlstadt-election-results-v1',
 
                 async init() {
+                    this.loadCachedData();
                     await this.fetchData();
                     // Poll every 10 seconds
                     setInterval(() => this.fetchData(), 10000);
                 },
 
-                async fetchData() {
-                    try {
-                        this.year = '2026';
-                        document.title = 'Kommunalwahl Karlstadt 2026';
+                applyPayload(payload) {
+                    this.year = payload.year || '2026';
+                    document.title = 'Kommunalwahl Karlstadt ' + this.year;
 
-                        // Metadata (optional but preferred)
-                        try {
-                            const metaResp = await fetch('meta.json?t=' + new Date().getTime());
-                            if (metaResp.ok) {
-                                const meta = await metaResp.json();
-                                if (meta.timestamp) {
-                                    const ts = new Date(meta.timestamp);
-                                    this.timestamp = ts.toLocaleString('de-DE');
-                                }
-                                this.councilCandidatesAvailable = !!meta.councilCandidatesAvailable;
-                                this.councilCsvAvailable = !!meta.councilCsvAvailable;
-                            }
-                        } catch (e) {
-                            // keep defaults if metadata is missing
+                    if (payload.timestamp) {
+                        const ts = new Date(payload.timestamp);
+                        if (!isNaN(ts.getTime())) {
+                            this.timestamp = ts.toLocaleString('de-DE');
                         }
+                    }
 
-                        // Council candidates JSON (may be empty before publication)
-                        try {
-                            const candidatesResp = await fetch('candidates.json?t=' + new Date().getTime());
-                            if (candidatesResp.ok) {
-                                this.parties = await candidatesResp.json();
-                            } else {
-                                this.parties = [];
-                            }
-                        } catch (e) {
-                            this.parties = [];
-                        }
+                    this.councilCandidatesAvailable = !!payload.councilCandidatesAvailable;
+                    this.councilCsvAvailable = !!payload.councilCsvAvailable;
+                    this.parties = Array.isArray(payload.parties) ? payload.parties : [];
+                    this.mayorCandidates = Array.isArray(payload.mayor) ? payload.mayor : [];
 
-                        // Mayor candidates JSON (optional)
-                        try {
-                            const mayorResp = await fetch('mayor.json?t=' + new Date().getTime());
-                            if (mayorResp.ok) {
-                                this.mayorCandidates = await mayorResp.json();
-                            } else {
-                                this.mayorCandidates = [];
-                            }
-                        } catch (e) {
-                            this.mayorCandidates = [];
-                        }
-
-                        // Flatten candidates for the list view (exclude aggregated/Unknown group)
-                        let tempCandidates = [];
-                        this.parties.forEach(party => {
-                            if (party.id === 'Unknown' || party.name === 'Unknown') return;
-                            party.candidates.forEach(candidate => {
-                                tempCandidates.push({
-                                    ...candidate,
-                                    partyId: party.id,
-                                    partyName: party.name,
-                                    partyColor: party.color
-                                });
+                    // Flatten candidates for the list view (exclude aggregated/Unknown group)
+                    let tempCandidates = [];
+                    this.parties.forEach(party => {
+                        if (party.id === 'Unknown' || party.name === 'Unknown') return;
+                        (party.candidates || []).forEach(candidate => {
+                            tempCandidates.push({
+                                ...candidate,
+                                partyId: party.id,
+                                partyName: party.name,
+                                partyColor: party.color
                             });
                         });
+                    });
 
-                        // Sort by votes descending
-                        this.allCandidates = tempCandidates.sort((a, b) => b.votes - a.votes);
+                    // Sort by votes descending
+                    this.allCandidates = tempCandidates.sort((a, b) => b.votes - a.votes);
 
-                        // Ensure selectedParties are still valid (keep empty selection if none)
-                        const validIds = this.parties.map(p => p.id);
-                        this.selectedParties = (this.selectedParties || []).filter(id => validIds.includes(id));
+                    // Ensure selectedParties are still valid (keep empty selection if none)
+                    const validIds = this.parties.map(p => p.id);
+                    this.selectedParties = (this.selectedParties || []).filter(id => validIds.includes(id));
 
-                        this.updateChart();
+                    this.updateChart();
+                },
+
+                loadCachedData() {
+                    try {
+                        const raw = localStorage.getItem(this.cacheKey);
+                        if (!raw) return;
+                        const parsed = JSON.parse(raw);
+                        if (!parsed || typeof parsed !== 'object') return;
+                        this.applyPayload(parsed);
+                    } catch (e) {
+                        // ignore cache issues
+                    }
+                },
+
+                async fetchData() {
+                    try {
+                        const response = await fetch('/api/results?t=' + new Date().getTime(), {
+                            cache: 'no-store'
+                        });
+                        if (!response.ok) {
+                            throw new Error('API request failed with status ' + response.status);
+                        }
+
+                        const payload = await response.json();
+                        this.applyPayload(payload);
+                        localStorage.setItem(this.cacheKey, JSON.stringify(payload));
                     } catch (error) {
-                        console.error("Error fetching data:", error);
+                        console.error('Error fetching API data:', error);
                     }
                 },
 

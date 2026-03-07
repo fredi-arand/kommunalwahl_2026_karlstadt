@@ -1,4 +1,4 @@
-from download_csv import (
+from election_source import (
     mayor_json_from_rows,
     normalize_filename,
     parse_mayor_table_csv,
