@@ -50,8 +50,7 @@
                 :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
             <button @click="fetchData()"
-                class="touch-target ml-auto px-4 py-2 rounded-full font-semibold border-2 bg-gray-100 text-gray-700 transition">↻
-                Aktualisieren</button>
+                class="touch-target ml-auto px-4 py-2 rounded-full font-semibold border-2 bg-gray-100 text-gray-700 transition">↻</button>
         </div>
 
         <!-- Party Filter (collapsible, only in candidates view) -->
@@ -163,6 +162,14 @@
 
     <script>
         const percentFormatter = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        const dateTimeFormatter = new Intl.DateTimeFormat('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
 
         if (window.ChartDataLabels) {
             Chart.register(ChartDataLabels);
@@ -226,7 +233,7 @@
                     if (payload.timestamp) {
                         const ts = new Date(payload.timestamp);
                         if (!isNaN(ts.getTime())) {
-                            this.timestamp = ts.toLocaleString('de-DE');
+                            this.timestamp = dateTimeFormatter.format(ts);
                         }
                     }
 
@@ -329,7 +336,7 @@
                         } else if (contentChanged) {
                             this.refreshStatus = 'Aktualisiert · zuletzt geprüft: ' + nowText;
                         } else if (this.timestamp) {
-                            this.refreshStatus = 'Keine Änderung seit Stand: ' + this.timestamp + ' · zuletzt geprüft: ' + nowText;
+                            this.refreshStatus = 'Keine Änderung · zuletzt geprüft: ' + nowText;
                         } else {
                             this.refreshStatus = 'Keine Änderung · zuletzt geprüft: ' + nowText;
                         }
