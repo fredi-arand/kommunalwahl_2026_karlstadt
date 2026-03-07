@@ -227,26 +227,32 @@
                 },
 
                 handleScrollUI() {
-                    const currentScrollY = window.scrollY || 0;
-                    const scrolledDown = currentScrollY > this.lastScrollY + 2;
-                    const scrolledUp = currentScrollY < this.lastScrollY - 2;
+                    const rawScrollY = window.scrollY || 0;
+                    const doc = document.documentElement;
+                    const maxScrollY = Math.max(0, doc.scrollHeight - window.innerHeight);
 
-                    if (scrolledDown) {
+                    if (maxScrollY <= 8) {
+                        this.standRowVisible = true;
+                        this.lastScrollY = 0;
+                        return;
+                    }
+
+                    const currentScrollY = Math.min(Math.max(rawScrollY, 0), maxScrollY);
+                    const delta = currentScrollY - this.lastScrollY;
+                    const scrolledDown = delta > 12;
+                    const scrolledUp = delta < -8;
+
+                    if (currentScrollY <= 8) {
+                        this.standRowVisible = true;
+                    } else if (scrolledDown) {
                         this.standRowVisible = false;
                         if (this.filtersOpen || this.showUpdateHistory) {
                             this.collapsePanels();
                         }
-                    } else if (scrolledUp || currentScrollY <= 4) {
+                    } else if (scrolledUp) {
                         this.standRowVisible = true;
                     }
 
-                    if (currentScrollY < 0) {
-                        this.standRowVisible = true;
-                    }
-
-                    if (currentScrollY < 0 && (this.filtersOpen || this.showUpdateHistory)) {
-                        this.collapsePanels();
-                    }
                     this.lastScrollY = currentScrollY;
                 },
 
