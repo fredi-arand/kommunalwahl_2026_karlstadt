@@ -186,6 +186,24 @@
                     setInterval(() => this.fetchData(), 10000);
                 },
 
+                formatDisplayName(name) {
+                    if (!name || typeof name !== 'string') return name;
+                    const normalized = name.trim().replace(/\s+/g, ' ');
+                    if (!normalized) return normalized;
+
+                    if (normalized.includes(',')) {
+                        const parts = normalized.split(',').map(part => part.trim()).filter(Boolean);
+                        if (parts.length >= 2) {
+                            return parts.slice(1).join(' ') + ' ' + parts[0];
+                        }
+                    }
+
+                    const tokens = normalized.split(' ');
+                    if (tokens.length < 2) return normalized;
+
+                    return [...tokens.slice(1), tokens[0]].join(' ');
+                },
+
                 applyPayload(payload) {
                     this.year = payload.year || '2026';
                     document.title = 'Kommunalwahl Karlstadt ' + this.year;
@@ -209,6 +227,7 @@
                         (party.candidates || []).forEach(candidate => {
                             tempCandidates.push({
                                 ...candidate,
+                                name: this.formatDisplayName(candidate.name),
                                 partyId: party.id,
                                 partyName: party.name,
                                 partyColor: party.color
@@ -299,7 +318,7 @@
                             const votes = c.votes || 0;
                             return {
                                 id: c.id,
-                                name: c.name,
+                                name: this.formatDisplayName(c.name),
                                 votes,
                                 percent: totalVotes > 0 ? percentFormatter.format(votes / totalVotes * 100) : null,
                                 partyId: c.party,
@@ -317,6 +336,7 @@
                             const top = sorted[0];
                             return {
                                 ...top,
+                                name: this.formatDisplayName(top.name),
                                 partyId: p.id,
                                 partyName: p.name,
                                 partyColor: p.color
