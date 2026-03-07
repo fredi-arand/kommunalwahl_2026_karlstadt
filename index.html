@@ -43,15 +43,16 @@
 
         <!-- View mode toggles -->
         <div class="flex justify-center gap-2 mb-2">
-            <button @click="viewMode='mayor'; filtersOpen = false; showUpdateHistory = false; expandStandRow()"
+            <button @click="viewMode='mayor'; filtersOpen = false"
                 :class="viewMode==='mayor'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Bürgermeister</button>
-            <button @click="viewMode='candidates'; expandStandRow()"
+            <button @click="viewMode='candidates'"
                 :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
         </div>
 
-        <div x-show="timestamp" x-ref="standRowContainer" class="mt-1 overflow-hidden space-y-2" :style="standRowStyle">
+        <div x-show="timestamp" class="mt-1 transition-all duration-200 ease-out overflow-hidden"
+            :class="standRowVisible ? 'max-h-96 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1 pointer-events-none'">
             <div class="flex items-center gap-2 justify-start">
                 <button @click="toggleUpdateHistory()"
                     :class="showUpdateHistory ? 'bg-gray-800 text-white border-gray-800' : 'bg-gray-100 text-gray-600 border-gray-200'"
@@ -67,7 +68,7 @@
                         x-text="selectedParties.length"></span>
                 </button>
             </div>
-            <div x-show="showUpdateHistory" class="text-xs text-gray-500">
+            <div x-show="showUpdateHistory" class="mt-1 text-xs text-gray-500">
                 <template x-if="actualUpdateTimestamps.length > 0">
                     <div>
                         <p class="mb-1">Änderungen erkannt um:</p>
@@ -83,7 +84,7 @@
 
             <!-- Party Filter (collapsible, only in candidates view) -->
             <div x-show="viewMode==='candidates' && filtersOpen"
-                class="bg-gray-100 rounded-lg border border-gray-200">
+                class="mt-2 bg-gray-100 rounded-lg border border-gray-200">
                 <div role="region" aria-labelledby="filter-toggle" class="flex flex-wrap gap-2 px-3 py-3">
                     <template x-for="party in parties" :key="party.id">
                         <button @click="toggleParty(party.id)"
@@ -97,9 +98,6 @@
                         zurücksetzen</button>
                 </div>
             </div>
-
-            <div x-show="showUpdateHistory || (viewMode==='candidates' && filtersOpen)" aria-hidden="true"
-                class="h-2 bg-white rounded-sm"></div>
         </div>
 
     </header>
@@ -218,7 +216,6 @@
                 showUpdateHistory: false,
                 lastScrollY: 0,
                 standRowVisible: true,
-                standRowCollapseOffset: 0,
 
                 async init() {
                     this.loadCachedData();
@@ -229,40 +226,12 @@
                     window.addEventListener('scroll', () => this.handleScrollUI(), { passive: true });
                 },
 
-                getStandRowFullHeight() {
-                    const container = this.$refs.standRowContainer;
-                    if (!container) return 0;
-                    return Math.ceil(container.scrollHeight || 0);
-                },
-
-                get standRowStyle() {
-                    const fullHeight = this.getStandRowFullHeight();
-                    if (fullHeight <= 0) {
-                        return 'max-height: 24rem;';
-                    }
-
-                    const effectiveOffset = Math.min(Math.max(this.standRowCollapseOffset, 0), fullHeight);
-                    const visibleHeight = Math.max(0, fullHeight - effectiveOffset);
-                    const borderSlack = 2;
-                    const renderedHeight = visibleHeight > 0 ? visibleHeight + borderSlack : 0;
-                    const pointerEvents = visibleHeight <= 4 ? 'none' : 'auto';
-                    return `max-height: ${renderedHeight}px; pointer-events: ${pointerEvents};`;
-                },
-
-                expandStandRow() {
-                    const currentScrollY = window.scrollY || 0;
-                    this.standRowCollapseOffset = 0;
-                    this.standRowVisible = true;
-                    this.lastScrollY = currentScrollY;
-                },
-
                 handleScrollUI() {
                     const rawScrollY = window.scrollY || 0;
                     const doc = document.documentElement;
                     const maxScrollY = Math.max(0, doc.scrollHeight - window.innerHeight);
 
                     if (maxScrollY <= 8) {
-                        this.standRowCollapseOffset = 0;
                         this.standRowVisible = true;
                         this.lastScrollY = 0;
                         return;
@@ -270,15 +239,18 @@
 
                     const currentScrollY = Math.min(Math.max(rawScrollY, 0), maxScrollY);
                     const delta = currentScrollY - this.lastScrollY;
-                    const collapseLimit = this.getStandRowFullHeight();
+                    const scrolledDown = delta > 12;
+                    const scrolledUp = delta < -8;
 
                     if (currentScrollY <= 8) {
-                        this.standRowCollapseOffset = 0;
                         this.standRowVisible = true;
-                    } else if (collapseLimit > 0 && delta !== 0) {
-                        const nextOffset = this.standRowCollapseOffset + delta;
-                        this.standRowCollapseOffset = Math.min(Math.max(nextOffset, 0), collapseLimit);
-                        this.standRowVisible = this.standRowCollapseOffset < collapseLimit;
+                    } else if (scrolledDown) {
+                        this.standRowVisible = false;
+                        if (this.filtersOpen || this.showUpdateHistory) {
+                            this.collapsePanels();
+                        }
+                    } else if (scrolledUp) {
+                        this.standRowVisible = true;
                     }
 
                     this.lastScrollY = currentScrollY;
@@ -319,8 +291,6 @@
                     this.showUpdateHistory = nextState;
                     if (nextState) {
                         this.filtersOpen = false;
-                        this.expandStandRow();
-                        return;
                     }
                 },
 
@@ -329,8 +299,6 @@
                     this.filtersOpen = nextState;
                     if (nextState) {
                         this.showUpdateHistory = false;
-                        this.expandStandRow();
-                        return;
                     }
                 },
 
