@@ -1,6 +1,7 @@
 from election_source import (
     mayor_json_from_rows,
     normalize_filename,
+    parse_council_parties_from_results,
     parse_mayor_table_csv,
 )
 
@@ -16,6 +17,66 @@ MAYOR_HTML = """
     <tr><td>CSU</td><td>123</td></tr>
   </tbody>
 </table>
+"""
+
+COUNCIL_RESULTS_HTML = """
+<div class="card">
+    <div class="card_header">Übersicht</div>
+    <table>
+        <tbody>
+            <tr>
+                <th>
+                    <span class="partei">
+                        <span class="partei__farbe" style="color:#008939"></span>
+                        <span class="partei__name"><abbr title="BÜNDNIS 90/DIE GRÜNEN">GRÜNE</abbr></span>
+                    </span>
+                </th>
+                <td>1.234</td>
+                <td>12,5 %</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div class="card">
+    <div class="card_header">Kandidaten</div>
+    <section class="accordion">
+        <article class="accordion-item">
+            <h3>
+                <span class="partei">
+                    <span class="partei__farbe" style="color:#008939"></span>
+                    <span class="partei__name"><abbr title="BÜNDNIS 90/DIE GRÜNEN">GRÜNE</abbr></span>
+                </span>
+            </h3>
+            <table>
+                <tbody>
+                    <tr><th>1</th><th>Rodi Jonas</th><td>980</td></tr>
+                    <tr><th>2</th><th>Muster Eva</th><td>254</td></tr>
+                </tbody>
+            </table>
+        </article>
+    </section>
+</div>
+"""
+
+COUNCIL_RESULTS_NO_VOTES_HTML = """
+<div class="card">
+    <div class="card_header">Kandidaten</div>
+    <section class="accordion">
+        <article class="accordion-item">
+            <h3>
+                <span class="partei">
+                    <span class="partei__farbe" style="color:#e3000f"></span>
+                    <span class="partei__name"><abbr title="Sozialdemokratische Partei Deutschlands">SPD</abbr></span>
+                </span>
+            </h3>
+            <table>
+                <tbody>
+                    <tr><th>1</th><th>Beispiel Eva</th></tr>
+                </tbody>
+            </table>
+        </article>
+    </section>
+</div>
 """
 
 
@@ -51,3 +112,32 @@ def test_mayor_json_from_rows_parses_and_sorts_candidates():
     ]
     assert payload[0]["votes"] == 1234
     assert payload[0]["id"] == 1
+
+
+def test_parse_council_parties_from_results_extracts_party_meta_and_candidates():
+    parties = parse_council_parties_from_results(COUNCIL_RESULTS_HTML)
+
+    assert len(parties) == 1
+    party = parties[0]
+    assert party["id"] == "GRÜNE"
+    assert party["name"] == "GRÜNE"
+    assert party["color"] == "#008939"
+    assert party["totalVotesPercent"] == 12.5
+
+    candidates = party["candidates"]
+    assert [candidate["name"] for candidate in candidates] == [
+        "Rodi Jonas",
+        "Muster Eva",
+    ]
+    assert [candidate["votes"] for candidate in candidates] == [980, 254]
+
+
+def test_parse_council_parties_from_results_defaults_votes_to_zero_without_vote_column():
+    parties = parse_council_parties_from_results(COUNCIL_RESULTS_NO_VOTES_HTML)
+
+    assert len(parties) == 1
+    party = parties[0]
+    assert party["id"] == "SPD"
+    assert party["color"] == "#e3000f"
+    assert party["totalVotesPercent"] == 0.0
+    assert party["candidates"][0]["votes"] == 0

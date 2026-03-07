@@ -14,9 +14,9 @@ MAYOR_RESULTS_URL = (
     "https://wahlen.osrz-akdb.de/uf-p/677148/1/20260308/"
     "buergermeisterwahl_gemeinde/ergebnisse.html"
 )
-COUNCIL_PRESS_URL = (
+COUNCIL_RESULTS_URL = (
     "https://wahlen.osrz-akdb.de/uf-p/677148/2/20260308/"
-    "gemeinderatswahl_gemeinde/presse.html"
+    "gemeinderatswahl_gemeinde/ergebnisse.html"
 )
 YEAR = "2026"
 
@@ -51,6 +51,21 @@ def normalize_filename(value: str) -> str:
 def parse_votes(value: str) -> int:
     digits = "".join(char for char in value if char.isdigit())
     return int(digits) if digits else 0
+
+
+def parse_percent(value: str) -> float:
+    normalized = normalize_text(value).replace("%", "").replace(",", ".")
+    try:
+        return float(normalized)
+    except ValueError:
+        return 0.0
+
+
+def parse_hex_color(style: str) -> str | None:
+    match = re.search(r"color\s*:\s*(#[0-9a-fA-F]{3,8})", style)
+    if not match:
+        return None
+    return match.group(1)
 
 
 def parse_mayor_table_csv(html: str) -> tuple[str, str, list[list[str]]]:
@@ -108,6 +123,115 @@ def mayor_json_from_rows(rows: list[list[str]]) -> list[dict[str, object]]:
         candidate["id"] = index
 
     return payload
+
+
+def parse_council_party_overview(
+    soup: BeautifulSoup,
+) -> dict[str, dict[str, object]]:
+    overview: dict[str, dict[str, object]] = {}
+
+    for table in soup.find_all("table"):
+        if table.select_one(".partei__name") is None:
+            continue
+
+        for row in table.select("tbody tr"):
+            party_name_element = row.select_one(".partei__name")
+            if party_name_element is None:
+                continue
+
+            party_name = normalize_text(party_name_element.get_text(" ", strip=True))
+            cells = row.find_all(["th", "td"])
+            votes = (
+                parse_votes(cells[1].get_text(" ", strip=True)) if len(cells) > 1 else 0
+            )
+            percent = (
+                parse_percent(cells[2].get_text(" ", strip=True))
+                if len(cells) > 2
+                else 0.0
+            )
+
+            color_element = row.select_one(".partei__farbe")
+            color_style = color_element.get("style", "") if color_element else ""
+            color = parse_hex_color(color_style) or "#CCCCCC"
+
+            overview[party_name] = {
+                "votes": votes,
+                "percent": percent,
+                "color": color,
+            }
+
+    return overview
+
+
+def parse_council_parties_from_results(html: str) -> list[dict[str, object]]:
+    soup = BeautifulSoup(html, "html.parser")
+    overview = parse_council_party_overview(soup)
+
+    candidate_cards: list[BeautifulSoup] = []
+    for card in soup.select("div.card"):
+        title_element = card.select_one(".card_header")
+        title = (
+            normalize_text(title_element.get_text(" ", strip=True))
+            if title_element
+            else ""
+        )
+        if title == "Kandidaten" and card.select_one("article.accordion-item"):
+            candidate_cards.append(card)
+
+    if not candidate_cards:
+        raise ValueError(
+            "Could not find council candidates accordion in ergebnisse.html"
+        )
+
+    parties: list[dict[str, object]] = []
+    candidate_card = candidate_cards[0]
+
+    for article in candidate_card.select("article.accordion-item"):
+        party_name_element = article.select_one(".partei__name")
+        if party_name_element is None:
+            continue
+
+        party_name = normalize_text(party_name_element.get_text(" ", strip=True))
+
+        color_element = article.select_one(".partei__farbe")
+        color_style = color_element.get("style", "") if color_element else ""
+        party_color = parse_hex_color(color_style)
+
+        candidates: list[dict[str, object]] = []
+        for index, row in enumerate(article.select("table tbody tr"), start=1):
+            cells = [
+                normalize_text(cell.get_text(" ", strip=True))
+                for cell in row.find_all(["th", "td"])
+            ]
+            if len(cells) < 2:
+                continue
+
+            candidate_name = cells[1]
+            if not candidate_name:
+                continue
+
+            candidate_id = parse_votes(cells[0]) if cells[0] else index
+            candidate_votes = parse_votes(cells[2]) if len(cells) > 2 else 0
+            candidates.append(
+                {
+                    "id": candidate_id if candidate_id > 0 else index,
+                    "name": candidate_name,
+                    "votes": candidate_votes,
+                }
+            )
+
+        party_overview = overview.get(party_name, {})
+        parties.append(
+            {
+                "id": party_name,
+                "name": party_name,
+                "color": party_color or party_overview.get("color") or "#CCCCCC",
+                "totalVotesPercent": float(party_overview.get("percent") or 0.0),
+                "candidates": candidates,
+            }
+        )
+
+    return parties
 
 
 def parse_council_csv_filenames(press_html: str) -> list[str]:

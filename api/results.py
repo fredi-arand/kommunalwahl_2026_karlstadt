@@ -2,22 +2,18 @@ from __future__ import annotations
 
 import json
 import time
-import urllib.error
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from typing import Any
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, urlparse
 
 from election_source import (
-    COUNCIL_PRESS_URL,
+    COUNCIL_RESULTS_URL,
     MAYOR_RESULTS_URL,
     YEAR,
     fetch_text,
-    looks_like_csv,
-    looks_like_html_error,
     mayor_json_from_rows,
-    normalize_filename,
-    parse_council_csv_filenames,
+    parse_council_parties_from_results,
     parse_mayor_table_csv,
 )
 
@@ -28,36 +24,24 @@ def utc_now_iso() -> str:
 
 def build_payload(timeout: float = 20.0) -> dict[str, Any]:
     mayor_candidates: list[dict[str, Any]] = []
-    council_paths: list[str] = []
+    parties: list[dict[str, Any]] = []
 
     mayor_html = fetch_text(MAYOR_RESULTS_URL, timeout=timeout)
     _, _, mayor_rows = parse_mayor_table_csv(mayor_html)
     mayor_candidates = mayor_json_from_rows(mayor_rows)
 
-    press_html = fetch_text(COUNCIL_PRESS_URL, timeout=timeout)
-    council_filenames = parse_council_csv_filenames(press_html)
-    council_base_url = COUNCIL_PRESS_URL.rsplit("/", 1)[0] + "/"
-
-    for filename in council_filenames:
-        csv_url = urljoin(council_base_url, filename)
-        try:
-            payload = fetch_text(csv_url, timeout=timeout)
-        except urllib.error.URLError:
-            continue
-
-        if looks_like_html_error(payload) or not looks_like_csv(payload):
-            continue
-
-        council_paths.append(normalize_filename(filename))
-
-    parties: list[dict[str, Any]] = []
+    council_html = fetch_text(COUNCIL_RESULTS_URL, timeout=timeout)
+    parties = parse_council_parties_from_results(council_html)
+    council_candidates_available = any(
+        len(party.get("candidates", [])) > 0 for party in parties
+    )
 
     return {
         "year": YEAR,
         "timestamp": utc_now_iso(),
         "mayorAvailable": bool(mayor_candidates),
-        "councilCsvAvailable": bool(council_paths),
-        "councilCandidatesAvailable": bool(parties),
+        "councilCsvAvailable": bool(parties),
+        "councilCandidatesAvailable": council_candidates_available,
         "mayor": mayor_candidates,
         "parties": parties,
     }
@@ -70,7 +54,7 @@ def with_debug(payload: dict[str, Any], duration_ms: int) -> dict[str, Any]:
         "durationMs": duration_ms,
         "sources": {
             "mayor": MAYOR_RESULTS_URL,
-            "councilPress": COUNCIL_PRESS_URL,
+            "councilResults": COUNCIL_RESULTS_URL,
         },
         "counts": {
             "mayor": len(payload.get("mayor", [])),
@@ -117,7 +101,7 @@ class handler(BaseHTTPRequestHandler):
                         "generatedAt": utc_now_iso(),
                         "sources": {
                             "mayor": MAYOR_RESULTS_URL,
-                            "councilPress": COUNCIL_PRESS_URL,
+                            "councilResults": COUNCIL_RESULTS_URL,
                         },
                     },
                 },

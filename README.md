@@ -9,6 +9,11 @@ A lightweight, mobile-first dashboard for displaying live election results for t
 - **Vercel API**: `api/results.py` is a serverless proxy endpoint (`/api/results`) that fetches the official source, parses it, and returns frontend-ready JSON.
 - **Frontend**: `index.html` reads `/api/results` and caches the last payload in `localStorage`.
 
+### Official Data Sources (2026)
+- **Mayor election**: `.../buergermeisterwahl_gemeinde/ergebnisse.html`
+- **Council election (parties + candidates)**: `.../gemeinderatswahl_gemeinde/ergebnisse.html`
+- `presse.html` is no longer used for council candidate parsing.
+
 ## Setup Instructions
 
 ### Prerequisites
