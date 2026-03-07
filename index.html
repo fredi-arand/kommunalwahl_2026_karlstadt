@@ -42,8 +42,8 @@
                 x-text="year ? year : ''"></span></h1>
 
         <!-- View mode toggles -->
-        <div class="flex gap-2 mb-2">
-            <button @click="viewMode='mayor'"
+        <div class="flex justify-center gap-2 mb-2">
+            <button @click="viewMode='mayor'; filtersOpen = false"
                 :class="viewMode==='mayor'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Bürgermeister</button>
             <button @click="viewMode='candidates'"
@@ -52,16 +52,18 @@
         </div>
 
         <div x-show="timestamp" class="mt-1">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 justify-start">
                 <button @click="toggleUpdateHistory()"
-                    class="flex-1 text-left text-sm font-semibold text-gray-700 touch-target"
+                    :class="showUpdateHistory ? 'bg-gray-800 text-white border-gray-800' : 'bg-gray-100 text-gray-600 border-gray-200'"
+                    class="touch-target px-3 py-1.5 rounded-lg text-sm font-semibold border text-left transition"
                     x-text="'Stand: ' + timestamp"></button>
-                <button x-show="viewMode==='candidates'" @click="filtersOpen = !filtersOpen"
+                <button x-show="viewMode==='candidates'" @click="toggleFilters()"
                     :aria-expanded="filtersOpen.toString()" id="filter-toggle"
-                    class="touch-target px-3 py-1.5 rounded-lg bg-gray-100 text-sm font-semibold text-gray-600 border border-gray-200 flex items-center gap-1">
+                    :class="filtersOpen ? 'bg-gray-800 text-white border-gray-800' : 'bg-gray-100 text-gray-600 border-gray-200'"
+                    class="touch-target px-3 py-1.5 rounded-lg text-sm font-semibold border flex items-center gap-1 transition">
                     <span>Filter</span>
-                    <span x-show="selectedParties.length > 0"
-                        class="text-xs bg-gray-700 text-white rounded-full px-1.5 py-0.5"
+                    <span x-show="selectedParties.length > 0" class="text-xs rounded-full px-1.5 py-0.5"
+                        :class="filtersOpen ? 'bg-white text-gray-800' : 'bg-gray-700 text-white'"
                         x-text="selectedParties.length"></span>
                 </button>
             </div>
@@ -94,6 +96,15 @@
                     class="ml-auto px-3 py-1 rounded-lg bg-gray-200 text-sm self-center">Filter
                     zurücksetzen</button>
             </div>
+        </div>
+
+        <div x-show="filtersOpen || showUpdateHistory" class="mt-0.5">
+            <button @click="collapsePanels()"
+                class="w-full h-6 rounded-md bg-gray-100 border border-gray-200 text-gray-600 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                </svg>
+            </button>
         </div>
     </header>
 
@@ -248,7 +259,24 @@
                 },
 
                 toggleUpdateHistory() {
-                    this.showUpdateHistory = !this.showUpdateHistory;
+                    const nextState = !this.showUpdateHistory;
+                    this.showUpdateHistory = nextState;
+                    if (nextState) {
+                        this.filtersOpen = false;
+                    }
+                },
+
+                toggleFilters() {
+                    const nextState = !this.filtersOpen;
+                    this.filtersOpen = nextState;
+                    if (nextState) {
+                        this.showUpdateHistory = false;
+                    }
+                },
+
+                collapsePanels() {
+                    this.filtersOpen = false;
+                    this.showUpdateHistory = false;
                 },
 
                 payloadSignature(payload) {
