@@ -257,7 +257,11 @@
                     const validIds = this.parties.map(p => p.id);
                     this.selectedParties = (this.selectedParties || []).filter(id => validIds.includes(id));
 
-                    this.updateChart();
+                    try {
+                        this.updateChart();
+                    } catch (error) {
+                        console.warn('Chart update skipped due to runtime error:', error);
+                    }
                 },
 
                 loadCachedData() {
@@ -311,7 +315,11 @@
 
                         this.latestPayloadSignature = incomingSignature;
                         this.applyPayload(payload);
-                        localStorage.setItem(this.cacheKey, JSON.stringify(payload));
+                        try {
+                            localStorage.setItem(this.cacheKey, JSON.stringify(payload));
+                        } catch (error) {
+                            console.warn('Could not persist refresh payload in localStorage:', error);
+                        }
 
                         const nowText = new Date().toLocaleTimeString('de-DE');
                         if (usedStaleCache && this.timestamp) {
