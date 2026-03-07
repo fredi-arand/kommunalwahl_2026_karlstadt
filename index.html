@@ -49,6 +49,9 @@
             <button @click="viewMode='candidates'"
                 :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
+            <button @click="fetchData()"
+                class="touch-target ml-auto px-4 py-2 rounded-full font-semibold border-2 bg-gray-100 text-gray-700 transition">↻
+                Aktualisieren</button>
         </div>
 
         <!-- Party Filter (collapsible, only in candidates view) -->
@@ -86,6 +89,7 @@
 
         <!-- Timestamp (non-sticky, top of scrollable content) -->
         <p x-show="timestamp" class="text-xs text-gray-400 mb-4" x-text="'Stand: ' + timestamp"></p>
+        <p x-show="refreshStatus" class="text-xs text-gray-500 mb-4" x-text="refreshStatus"></p>
 
         <!-- Party Strength Chart -->
         <div x-show="viewMode==='candidates'" class="bg-white rounded-xl shadow-sm p-4 mb-6">
@@ -178,12 +182,23 @@
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v1',
+                refreshStatus: '',
+                latestPayloadSignature: null,
 
                 async init() {
                     this.loadCachedData();
                     await this.fetchData();
-                    // Poll every 10 seconds
-                    setInterval(() => this.fetchData(), 10000);
+                },
+
+                payloadSignature(payload) {
+                    const signaturePayload = {
+                        year: payload?.year || null,
+                        mayor: Array.isArray(payload?.mayor) ? payload.mayor : [],
+                        parties: Array.isArray(payload?.parties) ? payload.parties : [],
+                        councilCandidatesAvailable: !!payload?.councilCandidatesAvailable,
+                        councilCsvAvailable: !!payload?.councilCsvAvailable
+                    };
+                    return JSON.stringify(signaturePayload);
                 },
 
                 formatDisplayName(name) {
@@ -251,6 +266,7 @@
                         if (!raw) return;
                         const parsed = JSON.parse(raw);
                         if (!parsed || typeof parsed !== 'object') return;
+                        this.latestPayloadSignature = this.payloadSignature(parsed);
                         this.applyPayload(parsed);
                     } catch (e) {
                         // ignore cache issues
@@ -259,18 +275,59 @@
 
                 async fetchData() {
                     try {
-                        const response = await fetch('/api/results?t=' + new Date().getTime(), {
-                            cache: 'no-store'
-                        });
-                        if (!response.ok) {
-                            throw new Error('API request failed with status ' + response.status);
+                        const apiUrls = ['/api/results'];
+                        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                        if (window.location.protocol === 'file:' || isLocalHost) {
+                            apiUrls.push('http://localhost:3000/api/results');
+                        }
+
+                        let response = null;
+                        let lastError = null;
+                        const attemptErrors = [];
+                        for (const apiUrl of apiUrls) {
+                            try {
+                                const candidateResponse = await fetch(apiUrl);
+                                if (!candidateResponse.ok) {
+                                    throw new Error('API request failed with status ' + candidateResponse.status + ' for ' + apiUrl);
+                                }
+                                response = candidateResponse;
+                                break;
+                            } catch (error) {
+                                lastError = error;
+                                const message = error && error.message ? error.message : String(error);
+                                attemptErrors.push({ apiUrl, message });
+                            }
+                        }
+
+                        if (!response) {
+                            console.error('API fetch attempts failed:', attemptErrors);
+                            throw lastError || new Error('No API endpoint reachable');
                         }
 
                         const payload = await response.json();
+                        const incomingSignature = this.payloadSignature(payload);
+                        const contentChanged = this.latestPayloadSignature !== incomingSignature;
+                        const usedStaleCache = !!payload.stale;
+
+                        this.latestPayloadSignature = incomingSignature;
                         this.applyPayload(payload);
                         localStorage.setItem(this.cacheKey, JSON.stringify(payload));
+
+                        const nowText = new Date().toLocaleTimeString('de-DE');
+                        if (usedStaleCache && this.timestamp) {
+                            this.refreshStatus = 'Quelle kurz nicht erreichbar · zwischengespeicherte Daten (Stand: ' + this.timestamp + ') · zuletzt geprüft: ' + nowText;
+                        } else if (usedStaleCache) {
+                            this.refreshStatus = 'Quelle kurz nicht erreichbar · zwischengespeicherte Daten · zuletzt geprüft: ' + nowText;
+                        } else if (contentChanged) {
+                            this.refreshStatus = 'Aktualisiert · zuletzt geprüft: ' + nowText;
+                        } else if (this.timestamp) {
+                            this.refreshStatus = 'Keine Änderung seit Stand: ' + this.timestamp + ' · zuletzt geprüft: ' + nowText;
+                        } else {
+                            this.refreshStatus = 'Keine Änderung · zuletzt geprüft: ' + nowText;
+                        }
                     } catch (error) {
                         console.error('Error fetching API data:', error);
+                        this.refreshStatus = 'Aktualisierung fehlgeschlagen';
                     }
                 },
 
