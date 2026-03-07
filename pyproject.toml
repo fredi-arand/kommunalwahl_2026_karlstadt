@@ -1,0 +1,10 @@
+[project]
+name = "kommunalwahl-2026-karlstadt"
+version = "0.1.0"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "beautifulsoup4==4.12.3",
+    "black==24.2.0",
+    "flake8==7.0.0",
+    "pytest==8.0.2",
+]

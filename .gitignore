@@ -5,3 +5,5 @@ __pycache__/
 dump.html
 .DS_Store
 .vscode/
+.vercel
+.env*.local
