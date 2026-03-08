@@ -14,6 +14,7 @@ from election_source import (
     YEAR,
     fetch_text,
     mayor_json_from_rows,
+    parse_mayor_counted_areas,
     parse_council_parties_from_results,
     parse_mayor_table_csv,
 )
@@ -31,8 +32,10 @@ def utc_now_iso() -> str:
 def build_payload(timeout: float = 20.0) -> dict[str, Any]:
     mayor_candidates: list[dict[str, Any]] = []
     parties: list[dict[str, Any]] = []
+    counted_areas: str | None = None
 
     mayor_html = fetch_text(MAYOR_RESULTS_URL, timeout=timeout)
+    counted_areas = parse_mayor_counted_areas(mayor_html)
     _, _, mayor_rows = parse_mayor_table_csv(mayor_html)
     mayor_candidates = mayor_json_from_rows(mayor_rows)
 
@@ -48,6 +51,7 @@ def build_payload(timeout: float = 20.0) -> dict[str, Any]:
         "mayorAvailable": bool(mayor_candidates),
         "councilCsvAvailable": bool(parties),
         "councilCandidatesAvailable": council_candidates_available,
+        "countedAreas": counted_areas,
         "mayor": mayor_candidates,
         "parties": parties,
     }

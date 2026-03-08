@@ -2,6 +2,7 @@ from election_source import (
     mayor_json_from_rows,
     normalize_filename,
     parse_council_parties_from_results,
+    parse_mayor_counted_areas,
     parse_mayor_table_csv,
 )
 
@@ -17,6 +18,12 @@ MAYOR_HTML = """
     <tr><td>CSU</td><td>123</td></tr>
   </tbody>
 </table>
+"""
+
+MAYOR_STAND_HTML = """
+<p class="stand">Bürgermeisterwahl 2026, Karlstadt, Zwischenergebnis<br>
+Ausgezählte Gebiete: 8 von 25, 08.03.2026, 18:17:11
+</p>
 """
 
 COUNCIL_RESULTS_HTML = """
@@ -112,6 +119,10 @@ def test_mayor_json_from_rows_parses_and_sorts_candidates():
     ]
     assert payload[0]["votes"] == 1234
     assert payload[0]["id"] == 1
+
+
+def test_parse_mayor_counted_areas_reads_current_progress():
+    assert parse_mayor_counted_areas(MAYOR_STAND_HTML) == "8/25"
 
 
 def test_parse_council_parties_from_results_extracts_party_meta_and_candidates():

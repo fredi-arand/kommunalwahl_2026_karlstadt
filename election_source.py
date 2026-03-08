@@ -125,6 +125,22 @@ def mayor_json_from_rows(rows: list[list[str]]) -> list[dict[str, object]]:
     return payload
 
 
+def parse_mayor_counted_areas(html: str) -> str | None:
+    soup = BeautifulSoup(html, "html.parser")
+
+    for stand_entry in soup.select("p.stand"):
+        stand_text = normalize_text(stand_entry.get_text(" ", strip=True))
+        match = re.search(
+            r"Ausgez(?:ä|ae)hlte\s+Gebiete:\s*(\d+)\s+von\s+(\d+)",
+            stand_text,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            return f"{match.group(1)}/{match.group(2)}"
+
+    return None
+
+
 def parse_council_party_overview(
     soup: BeautifulSoup,
 ) -> dict[str, dict[str, object]]:
