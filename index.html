@@ -101,10 +101,21 @@
             min-height: 44px;
         }
 
+        [x-cloak] {
+            display: none !important;
+        }
+
         .sticky-header {
             position: sticky;
             top: 0;
             z-index: 50;
+        }
+
+        body.high-contrast .counted-areas-sticky {
+            background-color: #000 !important;
+            color: #fff !important;
+            border-color: #fff !important;
+            box-shadow: none !important;
         }
     </style>
 </head>
@@ -124,6 +135,13 @@
             <button @click="viewMode='candidates'"
                 :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
+        </div>
+
+        <div x-show="viewMode==='mayor' && countedAreas" class="flex justify-center mb-2" x-cloak>
+            <div
+                class="counted-areas-sticky bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-700 shadow-sm">
+                Auszählungsstand: <span x-text="countedAreas"></span>
+            </div>
         </div>
 
         <div x-show="timestamp" class="mt-1 transition-all duration-200 ease-out overflow-hidden"
@@ -282,6 +300,7 @@
                 chartInstance: null,
                 year: '2026',
                 timestamp: null,
+                countedAreas: '',
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v1',
@@ -399,6 +418,7 @@
                 payloadSignature(payload) {
                     const signaturePayload = {
                         year: payload?.year || null,
+                        countedAreas: payload?.countedAreas || null,
                         mayor: Array.isArray(payload?.mayor) ? payload.mayor : [],
                         parties: Array.isArray(payload?.parties) ? payload.parties : [],
                         councilCandidatesAvailable: !!payload?.councilCandidatesAvailable,
@@ -428,6 +448,7 @@
                 applyPayload(payload) {
                     this.year = payload.year || '2026';
                     document.title = 'Kommunalwahl Karlstadt ' + this.year;
+                    this.countedAreas = typeof payload.countedAreas === 'string' ? payload.countedAreas : '';
 
                     if (!this.timestamp && payload.timestamp) {
                         const ts = new Date(payload.timestamp);
