@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import csv
+import json
 import io
 import re
 import urllib.request
+from html import unescape
 from typing import Iterable
 
 from bs4 import BeautifulSoup
@@ -187,9 +189,50 @@ def parse_council_party_overview(
     return overview
 
 
+def parse_council_seat_overview(soup: BeautifulSoup) -> dict[str, int]:
+    seats_by_party: dict[str, int] = {}
+
+    for chart in soup.select(".js-d3chart"):
+        options_raw = chart.get("data-chartoptions") or ""
+        options_text = unescape(options_raw)
+        if '"type":"sitze"' not in options_text:
+            continue
+
+        chart_data_raw = chart.get("data-chartdata") or ""
+        if not chart_data_raw:
+            continue
+
+        try:
+            chart_data = json.loads(unescape(chart_data_raw))
+        except json.JSONDecodeError:
+            continue
+
+        datasets = chart_data.get("dataSets")
+        if not isinstance(datasets, list):
+            continue
+
+        for entry in datasets:
+            if not isinstance(entry, dict):
+                continue
+            label = normalize_text(str(entry.get("label") or ""))
+            if not label:
+                continue
+            try:
+                seats = int(float(entry.get("value") or 0))
+            except (TypeError, ValueError):
+                seats = 0
+            seats_by_party[label] = max(0, seats)
+
+        if seats_by_party:
+            break
+
+    return seats_by_party
+
+
 def parse_council_parties_from_results(html: str) -> list[dict[str, object]]:
     soup = BeautifulSoup(html, "html.parser")
     overview = parse_council_party_overview(soup)
+    seat_overview = parse_council_seat_overview(soup)
 
     candidate_cards: list[BeautifulSoup] = []
     candidate_section_titles = {
@@ -298,6 +341,7 @@ def parse_council_parties_from_results(html: str) -> list[dict[str, object]]:
                 "id": party_name,
                 "name": party_name,
                 "color": party_color or party_overview.get("color") or "#CCCCCC",
+                "seats": int(seat_overview.get(party_name) or 0),
                 "totalVotesPercent": float(party_overview.get("percent") or 0.0),
                 "candidates": candidates,
             }

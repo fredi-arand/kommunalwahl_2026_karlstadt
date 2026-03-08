@@ -204,7 +204,7 @@
         <!-- Timestamp (non-sticky, top of scrollable content) -->
         <!-- Party Strength Chart -->
         <div x-show="viewMode==='candidates'" class="bg-white rounded-xl shadow-sm p-4 mb-6">
-            <h2 class="text-lg font-bold mb-2 text-gray-700">Parteistimmen (%)</h2>
+            <h2 class="text-lg font-bold mb-2 text-gray-700">Sitzverteilung</h2>
             <div class="w-full relative" style="height: 180px;">
                 <canvas id="partyChart"></canvas>
             </div>
@@ -678,76 +678,66 @@
                     if (!ctx) return;
 
                     const chartTextColor = this.isHighContrast ? '#ffffff' : '#374151';
-                    const chartGridColor = this.isHighContrast ? '#ffffff40' : '#E5E7EB';
-
-                    // Exclude parties with 0 candidates and 0 votes just in case
-                    const activeParties = this.parties.filter(p => p.totalVotesPercent > 0 || p.candidates.length > 0);
+                    const seatParties = this.parties.filter(p => (p.seats || 0) > 0);
+                    const hasSeatData = seatParties.length > 0;
+                    const activeParties = hasSeatData
+                        ? seatParties
+                        : this.parties.filter(p => p.totalVotesPercent > 0 || p.candidates.length > 0);
 
                     const labels = activeParties.map(p => p.name);
-                    const data = activeParties.map(p => p.totalVotesPercent);
+                    const data = hasSeatData
+                        ? activeParties.map(p => p.seats || 0)
+                        : activeParties.map(p => p.totalVotesPercent || 0);
                     const colors = activeParties.map(p => p.color);
+
+                    const datalabelFormatter = function (value) {
+                        if (value <= 0) return '';
+                        return hasSeatData ? value : (percentFormatter.format(value) + '%');
+                    };
 
                     if (this.chartInstance) {
                         this.chartInstance.data.labels = labels;
                         this.chartInstance.data.datasets[0].data = data;
+                        this.chartInstance.data.datasets[0].label = hasSeatData ? 'Sitze' : 'Stimmen (%)';
                         this.chartInstance.data.datasets[0].backgroundColor = colors;
                         this.chartInstance.options.plugins.datalabels.color = chartTextColor;
-                        this.chartInstance.options.scales.x.ticks.color = chartTextColor;
-                        this.chartInstance.options.scales.x.grid.color = chartGridColor;
-                        this.chartInstance.options.scales.y.ticks.color = chartTextColor;
-                        this.chartInstance.options.scales.y.grid.color = chartGridColor;
+                        this.chartInstance.options.plugins.datalabels.formatter = datalabelFormatter;
                         this.chartInstance.update();
                     } else {
                         this.chartInstance = new Chart(ctx, {
-                            type: 'bar',
+                            type: 'doughnut',
                             data: {
                                 labels: labels,
                                 datasets: [{
-                                    label: 'Stimmen (%)',
+                                    label: 'Sitze',
                                     data: data,
                                     backgroundColor: colors,
-                                    borderRadius: 4
+                                    borderWidth: 0,
+                                    hoverOffset: 2
                                 }]
                             },
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                indexAxis: 'x',
-                                layout: {
-                                    padding: { top: 20 }
-                                },
+                                rotation: -90,
+                                circumference: 180,
+                                cutout: '55%',
                                 plugins: {
-                                    legend: { display: false },
-                                    datalabels: {
-                                        anchor: 'end',
-                                        align: 'top',
-                                        formatter: function (value) {
-                                            return percentFormatter.format(value) + '%';
-                                        },
-                                        font: { size: 10, weight: 'bold' },
-                                        color: chartTextColor
-                                    }
-                                },
-                                scales: {
-                                    x: {
-                                        ticks: {
-                                            color: chartTextColor
-                                        },
-                                        grid: {
-                                            color: chartGridColor
+                                    legend: {
+                                        display: true,
+                                        position: 'bottom',
+                                        labels: {
+                                            color: chartTextColor,
+                                            boxWidth: 10,
+                                            usePointStyle: true,
                                         }
                                     },
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: {
-                                            color: chartTextColor,
-                                            callback: function (value) {
-                                                return value + '%';
-                                            }
-                                        },
-                                        grid: {
-                                            color: chartGridColor
-                                        }
+                                    datalabels: {
+                                        anchor: 'end',
+                                        align: 'start',
+                                        formatter: datalabelFormatter,
+                                        font: { size: 10, weight: 'bold' },
+                                        color: chartTextColor
                                     }
                                 }
                             }

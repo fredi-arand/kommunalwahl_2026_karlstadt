@@ -45,6 +45,10 @@ COUNCIL_RESULTS_HTML = """
         </tbody>
     </table>
 </div>
+<div class="chart js-d3chart"
+    data-chartoptions="{&quot;type&quot;:&quot;sitze&quot;}"
+    data-chartdata="{&quot;dataSets&quot;:[{&quot;label&quot;:&quot;GRÜNE&quot;,&quot;value&quot;:5}]}">
+</div>
 <div class="card">
     <div class="card_header">Ergebnisse aller Bewerberinnen und Bewerber</div>
     <section class="accordion">
@@ -141,6 +145,7 @@ def test_parse_council_parties_from_results_extracts_party_meta_and_candidates()
     assert party["id"] == "GRÜNE"
     assert party["name"] == "GRÜNE"
     assert party["color"] == "#008939"
+    assert party["seats"] == 5
     assert party["totalVotesPercent"] == 12.5
 
     candidates = party["candidates"]
@@ -158,5 +163,6 @@ def test_parse_council_parties_from_results_defaults_votes_to_zero_without_vote_
     party = parties[0]
     assert party["id"] == "SPD"
     assert party["color"] == "#e3000f"
+    assert party["seats"] == 0
     assert party["totalVotesPercent"] == 0.0
     assert party["candidates"][0]["votes"] == 0
