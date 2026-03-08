@@ -319,6 +319,7 @@
                 standRowVisible: true,
                 isHighContrast: false,
                 isDebugMode: false,
+                suppressAutoCollapseUntil: 0,
 
                 async init() {
                     this.loadContrastFromUrl();
@@ -355,6 +356,11 @@
                     }
 
                     const currentScrollY = Math.min(Math.max(rawScrollY, 0), maxScrollY);
+                    if (Date.now() < this.suppressAutoCollapseUntil) {
+                        this.lastScrollY = currentScrollY;
+                        return;
+                    }
+
                     const delta = currentScrollY - this.lastScrollY;
                     const scrolledDown = delta > 12;
                     const scrolledUp = delta < -8;
@@ -409,6 +415,8 @@
                     if (nextState) {
                         this.filtersOpen = false;
                     }
+                    this.suppressAutoCollapseUntil = Date.now() + 400;
+                    this.lastScrollY = window.scrollY || 0;
                 },
 
                 toggleFilters() {
@@ -417,6 +425,8 @@
                     if (nextState) {
                         this.showUpdateHistory = false;
                     }
+                    this.suppressAutoCollapseUntil = Date.now() + 400;
+                    this.lastScrollY = window.scrollY || 0;
                 },
 
                 collapsePanels() {
