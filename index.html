@@ -309,7 +309,7 @@
                 councilCountedAreas: '',
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
-                cacheKey: 'karlstadt-election-results-v1',
+                cacheKey: 'karlstadt-election-results-v2',
                 actualUpdatesKey: 'karlstadt-election-actual-updates-v1',
                 refreshStatus: '',
                 latestPayloadSignature: null,
@@ -678,29 +678,26 @@
                     if (!ctx) return;
 
                     const chartTextColor = this.isHighContrast ? '#ffffff' : '#374151';
-                    const seatParties = this.parties.filter(p => (p.seats || 0) > 0);
-                    const hasSeatData = seatParties.length > 0;
-                    const activeParties = hasSeatData
-                        ? seatParties
-                        : this.parties.filter(p => p.totalVotesPercent > 0 || p.candidates.length > 0);
+                    const activeParties = this.parties.filter(p => (p.seats || 0) > 0);
 
                     const labels = activeParties.map(p => p.name);
-                    const data = hasSeatData
-                        ? activeParties.map(p => p.seats || 0)
-                        : activeParties.map(p => p.totalVotesPercent || 0);
+                    const data = activeParties.map(p => p.seats || 0);
                     const colors = activeParties.map(p => p.color);
 
                     const datalabelFormatter = function (value) {
                         if (value <= 0) return '';
-                        return hasSeatData ? value : (percentFormatter.format(value) + '%');
+                        return value;
                     };
 
                     if (this.chartInstance) {
                         this.chartInstance.data.labels = labels;
                         this.chartInstance.data.datasets[0].data = data;
-                        this.chartInstance.data.datasets[0].label = hasSeatData ? 'Sitze' : 'Stimmen (%)';
+                        this.chartInstance.data.datasets[0].label = 'Sitze';
                         this.chartInstance.data.datasets[0].backgroundColor = colors;
-                        this.chartInstance.options.plugins.datalabels.color = chartTextColor;
+                        this.chartInstance.options.plugins.datalabels.color = '#FFFFFF';
+                        this.chartInstance.options.plugins.datalabels.font = { size: 13, weight: 'bold' };
+                        this.chartInstance.options.plugins.datalabels.textStrokeColor = '#000000';
+                        this.chartInstance.options.plugins.datalabels.textStrokeWidth = 3;
                         this.chartInstance.options.plugins.datalabels.formatter = datalabelFormatter;
                         this.chartInstance.update();
                     } else {
@@ -736,8 +733,10 @@
                                         anchor: 'end',
                                         align: 'start',
                                         formatter: datalabelFormatter,
-                                        font: { size: 10, weight: 'bold' },
-                                        color: chartTextColor
+                                        font: { size: 13, weight: 'bold' },
+                                        color: '#FFFFFF',
+                                        textStrokeColor: '#000000',
+                                        textStrokeWidth: 3
                                     }
                                 }
                             }
