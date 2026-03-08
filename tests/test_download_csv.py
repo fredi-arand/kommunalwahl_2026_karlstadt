@@ -1,6 +1,7 @@
 from election_source import (
     mayor_json_from_rows,
     normalize_filename,
+    parse_council_counted_areas,
     parse_council_parties_from_results,
     parse_mayor_counted_areas,
     parse_mayor_table_csv,
@@ -45,7 +46,7 @@ COUNCIL_RESULTS_HTML = """
     </table>
 </div>
 <div class="card">
-    <div class="card_header">Kandidaten</div>
+    <div class="card_header">Ergebnisse aller Bewerberinnen und Bewerber</div>
     <section class="accordion">
         <article class="accordion-item">
             <h3>
@@ -55,9 +56,12 @@ COUNCIL_RESULTS_HTML = """
                 </span>
             </h3>
             <table>
+                <thead>
+                    <tr><th>Nr.</th><th>Name, Vorname</th><th>Erreichter Platz</th><th>Stimmen</th><th>Gewählt</th></tr>
+                </thead>
                 <tbody>
-                    <tr><th>1</th><th>Rodi Jonas</th><td>980</td></tr>
-                    <tr><th>2</th><th>Muster Eva</th><td>254</td></tr>
+                    <tr><th>1</th><th>Rodi Jonas</th><td>3</td><td>980</td><td>Gewählt</td></tr>
+                    <tr><th>2</th><th>Muster Eva</th><td>9</td><td>254</td><td></td></tr>
                 </tbody>
             </table>
         </article>
@@ -67,7 +71,7 @@ COUNCIL_RESULTS_HTML = """
 
 COUNCIL_RESULTS_NO_VOTES_HTML = """
 <div class="card">
-    <div class="card_header">Kandidaten</div>
+    <div class="card_header">Ergebnisse aller Bewerberinnen und Bewerber</div>
     <section class="accordion">
         <article class="accordion-item">
             <h3>
@@ -123,6 +127,10 @@ def test_mayor_json_from_rows_parses_and_sorts_candidates():
 
 def test_parse_mayor_counted_areas_reads_current_progress():
     assert parse_mayor_counted_areas(MAYOR_STAND_HTML) == "8/25"
+
+
+def test_parse_council_counted_areas_reads_current_progress():
+    assert parse_council_counted_areas(MAYOR_STAND_HTML) == "8/25"
 
 
 def test_parse_council_parties_from_results_extracts_party_meta_and_candidates():

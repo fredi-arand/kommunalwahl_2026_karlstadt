@@ -13,6 +13,7 @@ from election_source import (
     MAYOR_RESULTS_URL,
     YEAR,
     fetch_text,
+    parse_council_counted_areas,
     mayor_json_from_rows,
     parse_mayor_counted_areas,
     parse_council_parties_from_results,
@@ -32,14 +33,16 @@ def utc_now_iso() -> str:
 def build_payload(timeout: float = 20.0) -> dict[str, Any]:
     mayor_candidates: list[dict[str, Any]] = []
     parties: list[dict[str, Any]] = []
-    counted_areas: str | None = None
+    mayor_counted_areas: str | None = None
+    council_counted_areas: str | None = None
 
     mayor_html = fetch_text(MAYOR_RESULTS_URL, timeout=timeout)
-    counted_areas = parse_mayor_counted_areas(mayor_html)
+    mayor_counted_areas = parse_mayor_counted_areas(mayor_html)
     _, _, mayor_rows = parse_mayor_table_csv(mayor_html)
     mayor_candidates = mayor_json_from_rows(mayor_rows)
 
     council_html = fetch_text(COUNCIL_RESULTS_URL, timeout=timeout)
+    council_counted_areas = parse_council_counted_areas(council_html)
     parties = parse_council_parties_from_results(council_html)
     council_candidates_available = any(
         len(party.get("candidates", [])) > 0 for party in parties
@@ -51,7 +54,9 @@ def build_payload(timeout: float = 20.0) -> dict[str, Any]:
         "mayorAvailable": bool(mayor_candidates),
         "councilCsvAvailable": bool(parties),
         "councilCandidatesAvailable": council_candidates_available,
-        "countedAreas": counted_areas,
+        "countedAreas": mayor_counted_areas or council_counted_areas,
+        "mayorCountedAreas": mayor_counted_areas,
+        "councilCountedAreas": council_counted_areas,
         "mayor": mayor_candidates,
         "parties": parties,
     }

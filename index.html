@@ -137,10 +137,14 @@
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
         </div>
 
-        <div x-show="viewMode==='mayor' && countedAreas" class="flex justify-center mb-2" x-cloak>
-            <div
-                class="counted-areas-sticky bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-700 shadow-sm">
-                Auszählungsstand: <span x-text="countedAreas"></span>
+        <div x-show="displayCountedAreas" class="flex justify-center mb-2" x-cloak>
+            <div class="text-center">
+                <div
+                    class="counted-areas-sticky bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-700 shadow-sm">
+                    Ausgezählte Gebiete: <span x-text="displayCountedAreas"></span>
+                </div>
+                <div x-show="isDebugMode && countedAreasSourceLabel" class="mt-1 text-[11px] text-gray-500"
+                    x-text="countedAreasSourceLabel"></div>
             </div>
         </div>
 
@@ -301,6 +305,8 @@
                 year: '2026',
                 timestamp: null,
                 countedAreas: '',
+                mayorCountedAreas: '',
+                councilCountedAreas: '',
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v1',
@@ -312,6 +318,7 @@
                 lastScrollY: 0,
                 standRowVisible: true,
                 isHighContrast: false,
+                isDebugMode: false,
 
                 async init() {
                     this.loadContrastFromUrl();
@@ -326,7 +333,9 @@
                 loadContrastFromUrl() {
                     const params = new URLSearchParams(window.location.search || '');
                     const rawValue = (params.get('contrast') || '').toLowerCase();
+                    const rawDebug = (params.get('debug') || '').toLowerCase();
                     this.isHighContrast = rawValue === '1' || rawValue === 'true' || rawValue === 'on';
+                    this.isDebugMode = rawDebug === '1' || rawDebug === 'true' || rawDebug === 'on';
                     this.applyContrastMode();
                 },
 
@@ -419,6 +428,8 @@
                     const signaturePayload = {
                         year: payload?.year || null,
                         countedAreas: payload?.countedAreas || null,
+                        mayorCountedAreas: payload?.mayorCountedAreas || null,
+                        councilCountedAreas: payload?.councilCountedAreas || null,
                         mayor: Array.isArray(payload?.mayor) ? payload.mayor : [],
                         parties: Array.isArray(payload?.parties) ? payload.parties : [],
                         councilCandidatesAvailable: !!payload?.councilCandidatesAvailable,
@@ -449,6 +460,8 @@
                     this.year = payload.year || '2026';
                     document.title = 'Kommunalwahl Karlstadt ' + this.year;
                     this.countedAreas = typeof payload.countedAreas === 'string' ? payload.countedAreas : '';
+                    this.mayorCountedAreas = typeof payload.mayorCountedAreas === 'string' ? payload.mayorCountedAreas : '';
+                    this.councilCountedAreas = typeof payload.councilCountedAreas === 'string' ? payload.councilCountedAreas : '';
 
                     if (!this.timestamp && payload.timestamp) {
                         const ts = new Date(payload.timestamp);
@@ -597,6 +610,26 @@
                         return 'Stadtrats-CSV ist veröffentlicht, die Aufbereitung läuft noch.';
                     }
                     return 'Stadtrats-Ergebnisse sind noch nicht veröffentlicht.';
+                },
+
+                get displayCountedAreas() {
+                    if (this.viewMode === 'candidates') {
+                        return this.councilCountedAreas || this.countedAreas || '';
+                    }
+                    return this.mayorCountedAreas || this.countedAreas || this.councilCountedAreas || '';
+                },
+
+                get countedAreasSourceLabel() {
+                    if (this.viewMode === 'candidates') {
+                        if (this.councilCountedAreas) return 'Quelle: Stadtratswahl';
+                        if (this.countedAreas) return 'Quelle: Bürgermeisterwahl (Fallback)';
+                        return '';
+                    }
+
+                    if (this.mayorCountedAreas) return 'Quelle: Bürgermeisterwahl';
+                    if (this.countedAreas) return 'Quelle: API-Fallback';
+                    if (this.councilCountedAreas) return 'Quelle: Stadtratswahl (Fallback)';
+                    return '';
                 },
 
                 get topCandidatesPerParty() {

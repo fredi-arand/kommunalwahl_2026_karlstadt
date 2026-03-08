@@ -125,7 +125,7 @@ def mayor_json_from_rows(rows: list[list[str]]) -> list[dict[str, object]]:
     return payload
 
 
-def parse_mayor_counted_areas(html: str) -> str | None:
+def parse_counted_areas(html: str) -> str | None:
     soup = BeautifulSoup(html, "html.parser")
 
     for stand_entry in soup.select("p.stand"):
@@ -139,6 +139,14 @@ def parse_mayor_counted_areas(html: str) -> str | None:
             return f"{match.group(1)}/{match.group(2)}"
 
     return None
+
+
+def parse_mayor_counted_areas(html: str) -> str | None:
+    return parse_counted_areas(html)
+
+
+def parse_council_counted_areas(html: str) -> str | None:
+    return parse_counted_areas(html)
 
 
 def parse_council_party_overview(
@@ -184,6 +192,11 @@ def parse_council_parties_from_results(html: str) -> list[dict[str, object]]:
     overview = parse_council_party_overview(soup)
 
     candidate_cards: list[BeautifulSoup] = []
+    candidate_section_titles = {
+        "kandidaten",
+        "ergebnisse aller bewerberinnen und bewerber",
+    }
+
     for card in soup.select("div.card"):
         title_element = card.select_one(".card_header")
         title = (
@@ -191,7 +204,12 @@ def parse_council_parties_from_results(html: str) -> list[dict[str, object]]:
             if title_element
             else ""
         )
-        if title == "Kandidaten" and card.select_one("article.accordion-item"):
+        normalized_title = title.lower()
+        has_candidate_title = (
+            normalized_title in candidate_section_titles
+            or "bewerber" in normalized_title
+        )
+        if has_candidate_title and card.select_one("article.accordion-item"):
             candidate_cards.append(card)
 
     if not candidate_cards:
@@ -213,21 +231,59 @@ def parse_council_parties_from_results(html: str) -> list[dict[str, object]]:
         color_style = color_element.get("style", "") if color_element else ""
         party_color = parse_hex_color(color_style)
 
+        table = article.select_one("table")
+        if table is None:
+            continue
+
+        header_cells = [
+            normalize_text(cell.get_text(" ", strip=True)).lower()
+            for cell in table.select("thead th")
+        ]
+
+        name_col_index = 1
+        for index, header_text in enumerate(header_cells):
+            if "name" in header_text:
+                name_col_index = index
+                break
+
+        id_col_index = 0
+        for index, header_text in enumerate(header_cells):
+            if "nr" in header_text:
+                id_col_index = index
+                break
+
+        votes_col_index: int | None = None
+        for index, header_text in enumerate(header_cells):
+            if "stimmen" in header_text:
+                votes_col_index = index
+                break
+
+        if votes_col_index is None:
+            votes_col_index = (
+                3 if len(header_cells) > 3 else (2 if len(header_cells) > 2 else None)
+            )
+
         candidates: list[dict[str, object]] = []
-        for index, row in enumerate(article.select("table tbody tr"), start=1):
+        for index, row in enumerate(table.select("tbody tr"), start=1):
             cells = [
                 normalize_text(cell.get_text(" ", strip=True))
                 for cell in row.find_all(["th", "td"])
             ]
-            if len(cells) < 2:
+            if len(cells) <= max(name_col_index, id_col_index):
                 continue
 
-            candidate_name = cells[1]
+            candidate_name = cells[name_col_index]
             if not candidate_name:
                 continue
 
-            candidate_id = parse_votes(cells[0]) if cells[0] else index
-            candidate_votes = parse_votes(cells[2]) if len(cells) > 2 else 0
+            candidate_id = (
+                parse_votes(cells[id_col_index]) if cells[id_col_index] else index
+            )
+
+            candidate_votes = 0
+            if votes_col_index is not None and len(cells) > votes_col_index:
+                candidate_votes = parse_votes(cells[votes_col_index])
+
             candidates.append(
                 {
                     "id": candidate_id if candidate_id > 0 else index,
