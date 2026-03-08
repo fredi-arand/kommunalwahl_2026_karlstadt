@@ -387,7 +387,8 @@
                         if (!raw) return;
                         const parsed = JSON.parse(raw);
                         if (!Array.isArray(parsed)) return;
-                        this.selectedParties = parsed.filter(id => typeof id === 'string');
+                        const validSelected = parsed.filter(id => typeof id === 'string');
+                        this.selectedParties = validSelected.length > 0 ? [validSelected[0]] : [];
                     } catch (error) {
                         // ignore cache issues
                     }
@@ -606,7 +607,8 @@
 
                     // Ensure selectedParties are still valid (keep empty selection if none)
                     const validIds = this.parties.map(p => p.id);
-                    this.selectedParties = (this.selectedParties || []).filter(id => validIds.includes(id));
+                    const validSelected = (this.selectedParties || []).filter(id => validIds.includes(id));
+                    this.selectedParties = validSelected.length > 0 ? [validSelected[0]] : [];
                     this.saveSelectedParties();
 
                     try {
@@ -691,9 +693,11 @@
                 },
 
                 toggleParty(partyId) {
-                    const idx = this.selectedParties.indexOf(partyId);
-                    if (idx === -1) this.selectedParties.push(partyId);
-                    else this.selectedParties.splice(idx, 1);
+                    if (this.selectedParties[0] === partyId) {
+                        this.selectedParties = [];
+                    } else {
+                        this.selectedParties = [partyId];
+                    }
                     this.saveSelectedParties();
                 },
 
