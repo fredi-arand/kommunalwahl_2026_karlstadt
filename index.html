@@ -761,11 +761,31 @@
                 },
 
                 get filteredStadtratCandidates() {
-                    return this.filteredCandidates.filter(candidate => candidate.isStadtrat);
+                    const stadtratCandidates = this.filteredCandidates.filter(candidate => candidate.isStadtrat);
+                    if (this.viewMode === 'candidates' && (!this.selectedParties || this.selectedParties.length === 0)) {
+                        return this.sortCandidatesByPartyThenVotes(stadtratCandidates);
+                    }
+                    return stadtratCandidates;
                 },
 
                 get filteredNachrueckerCandidates() {
-                    return this.filteredCandidates.filter(candidate => !candidate.isStadtrat);
+                    const nachrueckerCandidates = this.filteredCandidates.filter(candidate => !candidate.isStadtrat);
+                    if (this.viewMode === 'candidates' && (!this.selectedParties || this.selectedParties.length === 0)) {
+                        return this.sortCandidatesByPartyThenVotes(nachrueckerCandidates);
+                    }
+                    return nachrueckerCandidates;
+                },
+
+                sortCandidatesByPartyThenVotes(candidates) {
+                    const partyOrder = new Map(this.parties.map((party, index) => [party.id, index]));
+                    return candidates.slice().sort((a, b) => {
+                        const partyA = partyOrder.has(a.partyId) ? partyOrder.get(a.partyId) : Number.MAX_SAFE_INTEGER;
+                        const partyB = partyOrder.has(b.partyId) ? partyOrder.get(b.partyId) : Number.MAX_SAFE_INTEGER;
+                        if (partyA !== partyB) {
+                            return partyA - partyB;
+                        }
+                        return b.votes - a.votes;
+                    });
                 },
 
                 get emptyStateText() {
