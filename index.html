@@ -139,12 +139,28 @@
 
         <div x-show="displayCountedAreas" class="flex justify-center mb-2" x-cloak>
             <div class="text-center">
-                <div
+                <button x-show="countedAreasCanExpand" @click="toggleCountedAreasExpanded()"
+                    :aria-expanded="countedAreasExpanded.toString()"
+                    class="counted-areas-sticky bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-700 shadow-sm flex items-center gap-2">
+                    <span>Ausgezählte Gebiete: <span x-text="displayCountedAreas"></span></span>
+                    <span x-text="countedAreasExpanded ? '▲' : '▼'"></span>
+                </button>
+                <div x-show="!countedAreasCanExpand"
                     class="counted-areas-sticky bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-700 shadow-sm">
                     Ausgezählte Gebiete: <span x-text="displayCountedAreas"></span>
                 </div>
                 <div x-show="isDebugMode && countedAreasSourceLabel" class="mt-1 text-[11px] text-gray-500"
                     x-text="countedAreasSourceLabel"></div>
+                <div x-show="isDebugMode && viewMode==='candidates' && councilCsvHtmlInSync === false"
+                    class="mt-1 text-[11px] text-red-600">
+                    Warnung: CSV/HTML Kandidatenstimmen sind nicht synchron.
+                </div>
+                <div x-show="countedAreasCanExpand && countedAreasExpanded" x-cloak
+                    class="mt-2 bg-white border border-gray-200 rounded-lg px-3 py-2 text-left max-h-48 overflow-y-auto">
+                    <template x-for="area in displayCountedAreasList" :key="area">
+                        <div class="text-xs text-gray-700 py-0.5" x-text="area"></div>
+                    </template>
+                </div>
             </div>
         </div>
 
@@ -332,6 +348,8 @@
                 countedAreas: '',
                 mayorCountedAreas: '',
                 councilCountedAreas: '',
+                councilCountedAreasList: [],
+                councilCsvHtmlInSync: null,
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v2',
@@ -345,6 +363,7 @@
                 showUpdateHistory: false,
                 lastScrollY: 0,
                 standRowVisible: true,
+                countedAreasExpanded: false,
                 isHighContrast: false,
                 isDebugMode: false,
                 suppressAutoCollapseUntil: 0,
@@ -423,6 +442,7 @@
                     if (mode !== 'mayor' && mode !== 'candidates') return;
                     this.viewMode = mode;
                     this.filtersOpen = false;
+                    this.countedAreasExpanded = false;
                     this.saveViewMode();
                     this.saveFiltersOpen();
                 },
@@ -527,6 +547,13 @@
                     this.lastScrollY = window.scrollY || 0;
                 },
 
+                toggleCountedAreasExpanded() {
+                    if (!this.countedAreasCanExpand) return;
+                    this.countedAreasExpanded = !this.countedAreasExpanded;
+                    this.suppressAutoCollapseUntil = Date.now() + 400;
+                    this.lastScrollY = window.scrollY || 0;
+                },
+
                 collapsePanels() {
                     this.filtersOpen = false;
                     this.showUpdateHistory = false;
@@ -534,11 +561,16 @@
                 },
 
                 payloadSignature(payload) {
+                    const debugSyncValue = typeof payload?.debug?.councilCandidates?.inSync === 'boolean'
+                        ? payload.debug.councilCandidates.inSync
+                        : null;
                     const signaturePayload = {
                         year: payload?.year || null,
                         countedAreas: payload?.countedAreas || null,
                         mayorCountedAreas: payload?.mayorCountedAreas || null,
                         councilCountedAreas: payload?.councilCountedAreas || null,
+                        councilCountedAreasList: Array.isArray(payload?.councilCountedAreasList) ? payload.councilCountedAreasList : [],
+                        councilCsvHtmlInSync: debugSyncValue,
                         mayor: Array.isArray(payload?.mayor) ? payload.mayor : [],
                         parties: Array.isArray(payload?.parties) ? payload.parties : [],
                         councilCandidatesAvailable: !!payload?.councilCandidatesAvailable,
@@ -571,6 +603,13 @@
                     this.countedAreas = typeof payload.countedAreas === 'string' ? payload.countedAreas : '';
                     this.mayorCountedAreas = typeof payload.mayorCountedAreas === 'string' ? payload.mayorCountedAreas : '';
                     this.councilCountedAreas = typeof payload.councilCountedAreas === 'string' ? payload.councilCountedAreas : '';
+                    this.councilCountedAreasList = Array.isArray(payload.councilCountedAreasList)
+                        ? payload.councilCountedAreasList.filter(item => typeof item === 'string')
+                        : [];
+                    const debugSyncValue = typeof payload?.debug?.councilCandidates?.inSync === 'boolean'
+                        ? payload.debug.councilCandidates.inSync
+                        : null;
+                    this.councilCsvHtmlInSync = debugSyncValue;
 
                     if (!this.timestamp && payload.timestamp) {
                         const ts = new Date(payload.timestamp);
@@ -633,10 +672,14 @@
 
                 async fetchData() {
                     try {
-                        const apiUrls = ['/api/results'];
+                        const primaryApiUrl = this.isDebugMode ? '/api/results?debug=1' : '/api/results';
+                        const apiUrls = [primaryApiUrl];
                         const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                         if (window.location.protocol === 'file:' || isLocalHost) {
-                            apiUrls.push('http://localhost:3000/api/results');
+                            const localApiUrl = this.isDebugMode
+                                ? 'http://localhost:3000/api/results?debug=1'
+                                : 'http://localhost:3000/api/results';
+                            apiUrls.push(localApiUrl);
                         }
 
                         let response = null;
@@ -747,6 +790,7 @@
 
                 get countedAreasSourceLabel() {
                     if (this.viewMode === 'candidates') {
+                        if (this.councilCountedAreasList.length > 0) return 'Quelle: Stadtrats-CSV';
                         if (this.councilCountedAreas) return 'Quelle: Stadtratswahl';
                         if (this.countedAreas) return 'Quelle: Bürgermeisterwahl (Fallback)';
                         return '';
@@ -756,6 +800,15 @@
                     if (this.countedAreas) return 'Quelle: API-Fallback';
                     if (this.councilCountedAreas) return 'Quelle: Stadtratswahl (Fallback)';
                     return '';
+                },
+
+                get countedAreasCanExpand() {
+                    return this.viewMode === 'candidates' && this.councilCountedAreasList.length > 0;
+                },
+
+                get displayCountedAreasList() {
+                    if (this.viewMode !== 'candidates') return [];
+                    return this.councilCountedAreasList;
                 },
 
                 get topCandidatesPerParty() {

@@ -20,6 +20,10 @@ COUNCIL_RESULTS_URL = (
     "https://wahlen.osrz-akdb.de/uf-p/677148/2/20260308/"
     "gemeinderatswahl_gemeinde/ergebnisse.html"
 )
+COUNCIL_TOTAL_CSV_URL = (
+    "https://wahlen.osrz-akdb.de/uf-p/677148/2/20260308/"
+    "gemeinderatswahl_gemeinde/gesamtergebnis.csv"
+)
 YEAR = "2026"
 
 
@@ -149,6 +153,47 @@ def parse_mayor_counted_areas(html: str) -> str | None:
 
 def parse_council_counted_areas(html: str) -> str | None:
     return parse_counted_areas(html)
+
+
+def parse_recent_counted_areas(html: str) -> list[str]:
+    soup = BeautifulSoup(html, "html.parser")
+
+    for heading in soup.find_all(["h2", "h3"]):
+        heading_text = normalize_text(heading.get_text(" ", strip=True)).lower()
+        if "ankunftstafel" not in heading_text:
+            continue
+
+        table = heading.find_next("table")
+        if table is None:
+            continue
+
+        areas: list[str] = []
+        for row in table.find_all("tr"):
+            cells = row.find_all(["th", "td"])
+            if not cells:
+                continue
+
+            area_name = normalize_text(cells[0].get_text(" ", strip=True))
+            if not area_name:
+                continue
+            lowered = area_name.lower()
+            if lowered in {"gebiet", "wahlbezirk", "bezirk"}:
+                continue
+
+            if area_name not in areas:
+                areas.append(area_name)
+
+        return areas
+
+    return []
+
+
+def parse_mayor_recent_counted_areas(html: str) -> list[str]:
+    return parse_recent_counted_areas(html)
+
+
+def parse_council_recent_counted_areas(html: str) -> list[str]:
+    return parse_recent_counted_areas(html)
 
 
 def parse_council_party_overview(
@@ -375,3 +420,95 @@ def looks_like_csv(payload: str) -> bool:
     if not lines:
         return False
     return ";" in lines[0] or "," in lines[0]
+
+
+def parse_council_counted_area_names_from_csv(csv_text: str) -> list[str]:
+    rows = list(csv.DictReader(io.StringIO(csv_text), delimiter=";"))
+    if not rows:
+        return []
+
+    counted_areas: list[str] = []
+    for row in rows:
+        if normalize_text(row.get("Gebietsart", "")).upper() not in {
+            "STIMMBEZIRK",
+            "BRIEFWAHLBEZIRK",
+        }:
+            continue
+
+        area_name = normalize_text(row.get("Gebietsname", ""))
+        if not area_name:
+            continue
+
+        valid_votes = parse_votes(row.get("Stimmen gueltige (D)", ""))
+        voters = parse_votes(row.get("Waehler gesamt (B)", ""))
+        if valid_votes <= 0 and voters <= 0:
+            continue
+
+        if area_name not in counted_areas:
+            counted_areas.append(area_name)
+
+    return counted_areas
+
+
+def parse_council_counted_areas_progress_from_csv(csv_text: str) -> str | None:
+    rows = list(csv.DictReader(io.StringIO(csv_text), delimiter=";"))
+    if not rows:
+        return None
+
+    total = 0
+    counted = 0
+    for row in rows:
+        if normalize_text(row.get("Gebietsart", "")).upper() not in {
+            "STIMMBEZIRK",
+            "BRIEFWAHLBEZIRK",
+        }:
+            continue
+        total += 1
+
+        valid_votes = parse_votes(row.get("Stimmen gueltige (D)", ""))
+        voters = parse_votes(row.get("Waehler gesamt (B)", ""))
+        if valid_votes > 0 or voters > 0:
+            counted += 1
+
+    if total <= 0:
+        return None
+    return f"{counted}/{total}"
+
+
+def _parse_csv_int(value: str | None) -> int:
+    return parse_votes(value or "")
+
+
+def parse_council_d_block_votes_from_csv(csv_text: str) -> dict[int, list[int]]:
+    rows = list(csv.DictReader(io.StringIO(csv_text), delimiter=";"))
+    if not rows:
+        return {}
+
+    municipality_row = next(
+        (
+            row
+            for row in rows
+            if normalize_text(row.get("Gebietsart", "")).upper() == "GEMEINDE"
+        ),
+        rows[0],
+    )
+    if municipality_row is None:
+        return {}
+
+    d_block_ids: list[int] = []
+    for column_name in municipality_row.keys():
+        match = re.fullmatch(r"D(\d+)", column_name or "")
+        if match:
+            d_block_ids.append(int(match.group(1)))
+
+    d_block_votes: dict[int, list[int]] = {}
+    for block_id in d_block_ids:
+        candidate_votes = [
+            _parse_csv_int(municipality_row.get(f"D{block_id}_{index}"))
+            for index in range(1, 25)
+        ]
+        if sum(candidate_votes) <= 0:
+            continue
+        d_block_votes[block_id] = candidate_votes
+
+    return d_block_votes

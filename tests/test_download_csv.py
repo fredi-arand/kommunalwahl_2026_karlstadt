@@ -2,8 +2,11 @@ from election_source import (
     mayor_json_from_rows,
     normalize_filename,
     parse_council_counted_areas,
+    parse_council_counted_areas_progress_from_csv,
+    parse_council_recent_counted_areas,
     parse_council_parties_from_results,
     parse_mayor_counted_areas,
+    parse_mayor_recent_counted_areas,
     parse_mayor_table_csv,
 )
 
@@ -25,6 +28,29 @@ MAYOR_STAND_HTML = """
 <p class="stand">Bürgermeisterwahl 2026, Karlstadt, Zwischenergebnis<br>
 Ausgezählte Gebiete: 8 von 25, 08.03.2026, 18:17:11
 </p>
+"""
+
+ANKUNFTSTAFEL_HTML = """
+<div class="card">
+    <h2>Ankunftstafel</h2>
+    <table>
+        <thead>
+            <tr><th>Gebiet</th><th>Gemeinde</th><th>Uhrzeit</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Briefwahl IX</td><td>Karlstadt</td><td>19:29</td></tr>
+            <tr><td>Karlburg</td><td>Karlstadt</td><td>19:24</td></tr>
+            <tr><td>Briefwahl IX</td><td>Karlstadt</td><td>19:20</td></tr>
+        </tbody>
+    </table>
+</div>
+"""
+
+COUNCIL_TOTAL_CSV_SAMPLE = """Gemeinde;Gemeindename;Gebietsnummer;Gebietsart;Gebietsname;Bezirksnummer;Waehler gesamt (B);Stimmen gueltige (D)
+09677148;Karlstadt;09677148;GEMEINDE;Karlstadt;;;0;0
+09677148;Karlstadt;096771480001;STIMMBEZIRK;Altstadt;0001;0;0
+09677148;Karlstadt;096771480002;STIMMBEZIRK;Siedlung I;0002;10;100
+09677148;Karlstadt;096771480021;BRIEFWAHLBEZIRK;Briefwahl I;0021;0;0
 """
 
 COUNCIL_RESULTS_HTML = """
@@ -135,6 +161,26 @@ def test_parse_mayor_counted_areas_reads_current_progress():
 
 def test_parse_council_counted_areas_reads_current_progress():
     assert parse_council_counted_areas(MAYOR_STAND_HTML) == "8/25"
+
+
+def test_parse_mayor_recent_counted_areas_extracts_unique_area_names():
+    assert parse_mayor_recent_counted_areas(ANKUNFTSTAFEL_HTML) == [
+        "Briefwahl IX",
+        "Karlburg",
+    ]
+
+
+def test_parse_council_recent_counted_areas_extracts_unique_area_names():
+    assert parse_council_recent_counted_areas(ANKUNFTSTAFEL_HTML) == [
+        "Briefwahl IX",
+        "Karlburg",
+    ]
+
+
+def test_parse_council_counted_areas_progress_from_csv_counts_only_counted_districts():
+    assert (
+        parse_council_counted_areas_progress_from_csv(COUNCIL_TOTAL_CSV_SAMPLE) == "1/3"
+    )
 
 
 def test_parse_council_parties_from_results_extracts_party_meta_and_candidates():
