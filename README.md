@@ -59,6 +59,21 @@ pytest
 - Static hosting works with a built-in serverless endpoint at `/api/results` (file: `api/results.py`).
 - No browser CORS access to `wahlen.osrz-akdb.de` is required, because the fetch happens server-side inside Vercel.
 - API-side caching uses a 60-second TTL to avoid frequent upstream fetches from official election sources.
+- Optional server-side persisted stale fallback is supported via Vercel KV (recommended for cold-start outage resilience).
 - Shared HTTP caching headers are set to 60 seconds (`max-age=60`, `s-maxage=60`).
 - Client-side caching is handled in the browser (`localStorage`) with automatic refresh polling every 30 seconds.
 - Health/debug check is available via `/api/results?debug=1` (includes fetch duration and source metadata).
+
+### Optional: Persisted stale fallback with Vercel KV
+
+To survive cold starts while official pages are temporarily unreachable, configure Vercel KV and set:
+
+- `KV_REST_API_URL`
+- `KV_REST_API_TOKEN`
+- `KV_SNAPSHOT_KEY` (optional, defaults to `kommunalwahl:karlstadt:results`)
+
+Behavior:
+
+- On successful refresh, `/api/results` writes the latest payload as a snapshot to KV.
+- If upstream fetch fails and in-memory cache is empty, API serves the persisted KV snapshot with `stale: true`.
+- If KV is not configured, the API keeps current behavior (runtime cache + client `localStorage` fallback).

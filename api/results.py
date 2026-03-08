@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from threading import Lock
 from typing import Any
+from urllib.request import Request, urlopen
 from urllib.parse import parse_qs, urlparse
 
 from election_source import (
@@ -19,6 +21,9 @@ from election_source import (
 )
 
 CACHE_TTL_SECONDS = 60.0
+KV_REST_API_URL = os.getenv("KV_REST_API_URL", "").strip()
+KV_REST_API_TOKEN = os.getenv("KV_REST_API_TOKEN", "").strip()
+KV_SNAPSHOT_KEY = os.getenv("KV_SNAPSHOT_KEY", "kommunalwahl:karlstadt:results")
 _payload_cache: dict[str, Any] | None = None
 _payload_cache_created_at = 0.0
 _payload_cache_lock = Lock()
@@ -26,6 +31,81 @@ _payload_cache_lock = Lock()
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _has_kv_config() -> bool:
+    return bool(KV_REST_API_URL and KV_REST_API_TOKEN)
+
+
+def _kv_command(command: list[str], timeout: float = 5.0) -> Any:
+    payload = json.dumps(command).encode("utf-8")
+    request = Request(
+        KV_REST_API_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {KV_REST_API_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urlopen(request, timeout=timeout) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    return data.get("result")
+
+
+def persist_snapshot(payload: dict[str, Any]) -> bool:
+    if not _has_kv_config():
+        return False
+
+    snapshot = {
+        "savedAt": utc_now_iso(),
+        "payload": payload,
+    }
+    _kv_command(
+        ["SET", KV_SNAPSHOT_KEY, json.dumps(snapshot, ensure_ascii=False)],
+        timeout=5.0,
+    )
+    return True
+
+
+def load_persisted_snapshot() -> tuple[dict[str, Any], int] | None:
+    if not _has_kv_config():
+        return None
+
+    raw_result = _kv_command(["GET", KV_SNAPSHOT_KEY], timeout=5.0)
+    if not raw_result:
+        return None
+
+    parsed = json.loads(raw_result)
+    if isinstance(parsed, dict) and "payload" in parsed:
+        payload = parsed.get("payload")
+        saved_at = _parse_iso_datetime(parsed.get("savedAt"))
+    else:
+        payload = parsed
+        saved_at = (
+            _parse_iso_datetime(payload.get("timestamp"))
+            if isinstance(payload, dict)
+            else None
+        )
+
+    if not isinstance(payload, dict):
+        return None
+
+    age_seconds = 0
+    if saved_at is not None:
+        now = datetime.now(timezone.utc)
+        age_seconds = int(max(0.0, (now - saved_at).total_seconds()))
+
+    return dict(payload), age_seconds
 
 
 def build_payload(timeout: float = 20.0) -> dict[str, Any]:
@@ -66,6 +146,10 @@ def get_payload_cached(timeout: float = 20.0) -> tuple[dict[str, Any], str, int]
             return dict(_payload_cache), "runtime-cache", age_seconds
 
     payload = build_payload(timeout=timeout)
+    try:
+        persist_snapshot(payload)
+    except Exception:
+        pass
 
     with _payload_cache_lock:
         _payload_cache = dict(payload)
@@ -158,6 +242,27 @@ class handler(BaseHTTPRequestHandler):
                         stale_payload,
                         0,
                         "stale-fallback",
+                        stale_cache_age_seconds,
+                    )
+                    stale_payload["debug"]["upstreamError"] = str(exc)
+                self._send_json(200, stale_payload)
+                return
+
+            try:
+                persisted_snapshot_with_age = load_persisted_snapshot()
+            except Exception:
+                persisted_snapshot_with_age = None
+            if persisted_snapshot_with_age is not None:
+                stale_payload, stale_cache_age_seconds = persisted_snapshot_with_age
+                stale_payload["stale"] = True
+                stale_payload["warning"] = (
+                    "Serving persisted snapshot because upstream refresh failed"
+                )
+                if debug:
+                    stale_payload = with_debug(
+                        stale_payload,
+                        0,
+                        "stale-kv-snapshot",
                         stale_cache_age_seconds,
                     )
                     stale_payload["debug"]["upstreamError"] = str(exc)
