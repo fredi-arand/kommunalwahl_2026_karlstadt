@@ -311,6 +311,8 @@
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v2',
                 viewModeKey: 'karlstadt-election-view-mode-v1',
+                selectedPartiesKey: 'karlstadt-election-selected-parties-v1',
+                filtersOpenKey: 'karlstadt-election-filters-open-v1',
                 actualUpdatesKey: 'karlstadt-election-actual-updates-v1',
                 refreshStatus: '',
                 latestPayloadSignature: null,
@@ -325,6 +327,8 @@
                 async init() {
                     this.loadContrastFromUrl();
                     this.loadViewMode();
+                    this.loadSelectedParties();
+                    this.loadFiltersOpen();
                     this.loadCachedData();
                     this.loadUpdateHistory();
                     await this.fetchData();
@@ -352,11 +356,49 @@
                     }
                 },
 
+                loadSelectedParties() {
+                    try {
+                        const raw = localStorage.getItem(this.selectedPartiesKey);
+                        if (!raw) return;
+                        const parsed = JSON.parse(raw);
+                        if (!Array.isArray(parsed)) return;
+                        this.selectedParties = parsed.filter(id => typeof id === 'string');
+                    } catch (error) {
+                        // ignore cache issues
+                    }
+                },
+
+                saveSelectedParties() {
+                    try {
+                        localStorage.setItem(this.selectedPartiesKey, JSON.stringify(this.selectedParties));
+                    } catch (error) {
+                        // ignore cache issues
+                    }
+                },
+
+                loadFiltersOpen() {
+                    try {
+                        const raw = localStorage.getItem(this.filtersOpenKey);
+                        this.filtersOpen = raw === '1';
+                    } catch (error) {
+                        // ignore cache issues
+                    }
+                },
+
+                saveFiltersOpen() {
+                    try {
+                        localStorage.setItem(this.filtersOpenKey, this.filtersOpen ? '1' : '0');
+                    } catch (error) {
+                        // ignore cache issues
+                    }
+                },
+
                 setViewMode(mode) {
                     if (mode !== 'mayor' && mode !== 'candidates') return;
                     this.viewMode = mode;
                     this.filtersOpen = false;
                     this.saveViewMode();
+                    this.saveFiltersOpen();
                 },
 
                 loadContrastFromUrl() {
@@ -442,6 +484,7 @@
                     this.showUpdateHistory = nextState;
                     if (nextState) {
                         this.filtersOpen = false;
+                        this.saveFiltersOpen();
                     }
                     this.suppressAutoCollapseUntil = Date.now() + 400;
                     this.lastScrollY = window.scrollY || 0;
@@ -453,6 +496,7 @@
                     if (nextState) {
                         this.showUpdateHistory = false;
                     }
+                    this.saveFiltersOpen();
                     this.suppressAutoCollapseUntil = Date.now() + 400;
                     this.lastScrollY = window.scrollY || 0;
                 },
@@ -460,6 +504,7 @@
                 collapsePanels() {
                     this.filtersOpen = false;
                     this.showUpdateHistory = false;
+                    this.saveFiltersOpen();
                 },
 
                 payloadSignature(payload) {
@@ -534,6 +579,7 @@
                     // Ensure selectedParties are still valid (keep empty selection if none)
                     const validIds = this.parties.map(p => p.id);
                     this.selectedParties = (this.selectedParties || []).filter(id => validIds.includes(id));
+                    this.saveSelectedParties();
 
                     try {
                         this.updateChart();
@@ -620,10 +666,12 @@
                     const idx = this.selectedParties.indexOf(partyId);
                     if (idx === -1) this.selectedParties.push(partyId);
                     else this.selectedParties.splice(idx, 1);
+                    this.saveSelectedParties();
                 },
 
                 resetFilters() {
                     this.selectedParties = [];
+                    this.saveSelectedParties();
                 },
 
                 get filteredCandidates() {
