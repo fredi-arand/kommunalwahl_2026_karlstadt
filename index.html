@@ -222,20 +222,45 @@
 
             <div class="space-y-3">
                 <template x-if="viewMode==='candidates'">
-                    <template x-for="candidate in filteredCandidates" :key="candidate.partyId + '-' + candidate.id">
-                        <div class="bg-white rounded-lg p-4 shadow-sm flex justify-between items-center border-l-4"
-                            :style="`border-color: ${candidate.partyColor}`">
-                            <div>
-                                <div class="font-bold text-gray-900 text-lg" x-text="candidate.name"></div>
-                                <div class="text-sm font-semibold text-gray-500" x-text="candidate.partyName"></div>
+                    <div class="space-y-3">
+                        <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wide">Stadtrat <span
+                                class="text-xs font-normal text-gray-500"
+                                x-text="`(${filteredStadtratCandidates.length})`"></span></h3>
+                        <template x-for="candidate in filteredStadtratCandidates"
+                            :key="'stadtrat-' + candidate.partyId + '-' + candidate.id">
+                            <div class="bg-white rounded-lg p-4 shadow-sm flex justify-between items-center border-l-4"
+                                :style="`border-color: ${candidate.partyColor}`">
+                                <div>
+                                    <div class="font-bold text-gray-900 text-lg" x-text="candidate.name"></div>
+                                    <div class="text-sm font-semibold text-gray-500" x-text="candidate.partyName"></div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-black text-gray-800"
+                                        x-text="candidate.votes.toLocaleString('de-DE')"></div>
+                                    <div class="text-xs text-gray-400">Stimmen</div>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <div class="text-2xl font-black text-gray-800"
-                                    x-text="candidate.votes.toLocaleString('de-DE')"></div>
-                                <div class="text-xs text-gray-400">Stimmen</div>
+                        </template>
+
+                        <h3 class="text-sm font-bold text-gray-600 uppercase tracking-wide pt-2">Nachrücker <span
+                                class="text-xs font-normal text-gray-500"
+                                x-text="`(${filteredNachrueckerCandidates.length})`"></span></h3>
+                        <template x-for="candidate in filteredNachrueckerCandidates"
+                            :key="'nachruecker-' + candidate.partyId + '-' + candidate.id">
+                            <div class="bg-white rounded-lg p-4 shadow-sm flex justify-between items-center border-l-4"
+                                :style="`border-color: ${candidate.partyColor}`">
+                                <div>
+                                    <div class="font-bold text-gray-900 text-lg" x-text="candidate.name"></div>
+                                    <div class="text-sm font-semibold text-gray-500" x-text="candidate.partyName"></div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-black text-gray-800"
+                                        x-text="candidate.votes.toLocaleString('de-DE')"></div>
+                                    <div class="text-xs text-gray-400">Stimmen</div>
+                                </div>
                             </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </template>
 
                 <template x-if="viewMode==='mayor'">
@@ -562,13 +587,16 @@
                     let tempCandidates = [];
                     this.parties.forEach(party => {
                         if (party.id === 'Unknown' || party.name === 'Unknown') return;
-                        (party.candidates || []).forEach(candidate => {
+                        const sortedPartyCandidates = (party.candidates || []).slice().sort((a, b) => b.votes - a.votes);
+                        sortedPartyCandidates.forEach((candidate, index) => {
+                            const seatCount = Number(party.seats || 0);
                             tempCandidates.push({
                                 ...candidate,
                                 name: this.formatDisplayName(candidate.name),
                                 partyId: party.id,
                                 partyName: party.name,
-                                partyColor: party.color
+                                partyColor: party.color,
+                                isStadtrat: seatCount > 0 && index < seatCount
                             });
                         });
                     });
@@ -683,6 +711,14 @@
                     }
 
                     return filtered;
+                },
+
+                get filteredStadtratCandidates() {
+                    return this.filteredCandidates.filter(candidate => candidate.isStadtrat);
+                },
+
+                get filteredNachrueckerCandidates() {
+                    return this.filteredCandidates.filter(candidate => !candidate.isStadtrat);
                 },
 
                 get emptyStateText() {
