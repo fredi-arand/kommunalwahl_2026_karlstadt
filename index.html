@@ -129,10 +129,10 @@
 
         <!-- View mode toggles -->
         <div class="flex justify-center gap-2 mb-2">
-            <button @click="viewMode='mayor'; filtersOpen = false"
+            <button @click="setViewMode('mayor')"
                 :class="viewMode==='mayor'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Bürgermeister</button>
-            <button @click="viewMode='candidates'"
+            <button @click="setViewMode('candidates')"
                 :class="viewMode==='candidates'? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'"
                 class="touch-target px-4 py-2 rounded-full font-semibold border-2 transition">Kandidaten</button>
         </div>
@@ -310,6 +310,7 @@
                 councilCandidatesAvailable: false,
                 councilCsvAvailable: false,
                 cacheKey: 'karlstadt-election-results-v2',
+                viewModeKey: 'karlstadt-election-view-mode-v1',
                 actualUpdatesKey: 'karlstadt-election-actual-updates-v1',
                 refreshStatus: '',
                 latestPayloadSignature: null,
@@ -323,12 +324,39 @@
 
                 async init() {
                     this.loadContrastFromUrl();
+                    this.loadViewMode();
                     this.loadCachedData();
                     this.loadUpdateHistory();
                     await this.fetchData();
                     setInterval(() => this.fetchData(), 30000);
                     this.lastScrollY = window.scrollY || 0;
                     window.addEventListener('scroll', () => this.handleScrollUI(), { passive: true });
+                },
+
+                loadViewMode() {
+                    try {
+                        const raw = localStorage.getItem(this.viewModeKey);
+                        if (raw === 'mayor' || raw === 'candidates') {
+                            this.viewMode = raw;
+                        }
+                    } catch (error) {
+                        // ignore cache issues
+                    }
+                },
+
+                saveViewMode() {
+                    try {
+                        localStorage.setItem(this.viewModeKey, this.viewMode);
+                    } catch (error) {
+                        // ignore cache issues
+                    }
+                },
+
+                setViewMode(mode) {
+                    if (mode !== 'mayor' && mode !== 'candidates') return;
+                    this.viewMode = mode;
+                    this.filtersOpen = false;
+                    this.saveViewMode();
                 },
 
                 loadContrastFromUrl() {
