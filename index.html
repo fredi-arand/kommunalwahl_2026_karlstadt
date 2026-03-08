@@ -25,6 +25,8 @@
         body.high-contrast {
             background-color: #000;
             color: #fff;
+            font-size: 112.5%;
+            line-height: 1.6;
         }
 
         body.high-contrast .sticky-header,
@@ -49,6 +51,31 @@
         body.high-contrast .text-xl,
         body.high-contrast .text-2xl {
             color: #fff !important;
+        }
+
+        body.high-contrast .text-xs {
+            font-size: 1rem !important;
+            line-height: 1.5rem !important;
+        }
+
+        body.high-contrast .text-sm {
+            font-size: 1.125rem !important;
+            line-height: 1.75rem !important;
+        }
+
+        body.high-contrast .text-lg {
+            font-size: 1.375rem !important;
+            line-height: 1.9rem !important;
+        }
+
+        body.high-contrast .text-xl {
+            font-size: 1.6rem !important;
+            line-height: 2.1rem !important;
+        }
+
+        body.high-contrast .text-2xl {
+            font-size: 2.1rem !important;
+            line-height: 2.4rem !important;
         }
 
         body.high-contrast .border,
@@ -195,7 +222,8 @@
                             :style="`border-color: ${candidate.partyColor}`">
                             <div>
                                 <div class="font-bold text-gray-900 text-lg" x-text="candidate.name"></div>
-                                <div class="text-sm font-semibold text-gray-500" x-text="candidate.partyName"></div>
+                                <div x-show="!isHighContrast" class="text-sm font-semibold text-gray-500"
+                                    x-text="candidate.partyName"></div>
                             </div>
                             <div class="text-right">
                                 <div class="text-2xl font-black text-gray-800"

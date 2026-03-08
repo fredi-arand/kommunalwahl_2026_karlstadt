@@ -45,6 +45,16 @@ Run the app with Vercel so the `/api/results` serverless endpoint is available:
     http://localhost:3000
     ```
 
+### Beamer / High-Contrast Mode
+
+For low-contrast projectors, enable high-contrast mode via URL parameter:
+
+```bash
+http://localhost:3000?contrast=1
+```
+
+Works with `?contrast=1`, `?contrast=true`, or `?contrast=on`.
+
 ## Development & Contribution
 Please read `CONTRIBUTING.md` before making any changes. This project enforces `black` for formatting and `flake8` for linting.
 
